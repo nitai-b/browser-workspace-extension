@@ -251,8 +251,29 @@ h3 {
   color: var(--accent-foreground);
 }
 
+.project-item.has-current-tab {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent), 0 8px 22px var(--shadow-color);
+}
+
+.project-item.is-active.has-current-tab {
+  box-shadow: inset 3px 0 0 var(--accent-foreground), 0 8px 22px var(--shadow-color);
+}
+
+.project-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
 .project-name {
   display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 600;
   margin-bottom: 2px;
 }
@@ -381,6 +402,23 @@ h3 {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.current-project-pill {
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-soft-foreground);
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.project-item.is-active .current-project-pill {
+  background: color-mix(in srgb, var(--accent-foreground) 18%, transparent);
+  color: var(--accent-foreground);
 }
 
 .saved-tab-list {

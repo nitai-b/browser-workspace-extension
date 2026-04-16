@@ -11,6 +11,7 @@ import {
   linkSavedTabToBrowserTab,
   linkRestoredTabsToProject,
   moveSavedTab,
+  normalizeState,
   removeSavedTab,
   renameProject,
   selectProject,
@@ -63,7 +64,7 @@ export default function App() {
         return;
       }
 
-      setState(changes.workspaceOrganizerState.newValue);
+      setState(normalizeState(changes.workspaceOrganizerState.newValue));
     };
 
     chrome.storage.onChanged.addListener(handleChange);
@@ -82,7 +83,13 @@ export default function App() {
     let isMounted = true;
 
     async function refreshActiveBrowserTab() {
-      const tab = await getCurrentTab();
+      let tab = null;
+
+      try {
+        tab = await getCurrentTab();
+      } catch (error) {
+        console.error('Failed to refresh active browser tab.', error);
+      }
 
       if (isMounted) {
         setActiveBrowserTab(tab);
@@ -120,22 +127,44 @@ export default function App() {
     };
   }, []);
 
-  const activeSavedTabId = useMemo(() => {
-    if (!selectedProject || !activeBrowserTab) {
+  const activeProjectMatch = useMemo(() => {
+    if (!activeBrowserTab?.url) {
       return null;
     }
 
-    const linkedSavedTab = selectedProject.tabs.find((tab) =>
-      isSameBrowserTab(tab, activeBrowserTab),
-    );
+    const projects = Array.isArray(state.projects) ? state.projects : [];
 
-    if (linkedSavedTab) {
-      return linkedSavedTab.id;
+    for (const project of projects) {
+      const tabs = Array.isArray(project.tabs) ? project.tabs : [];
+      const linkedSavedTab = tabs.find((tab) => isSameBrowserTab(tab, activeBrowserTab));
+
+      if (linkedSavedTab) {
+        return {
+          projectId: project.id,
+          tabId: linkedSavedTab.id,
+        };
+      }
     }
 
-    const matchingUrlTab = selectedProject.tabs.find((tab) => tab.url === activeBrowserTab.url);
-    return matchingUrlTab?.id || null;
-  }, [activeBrowserTab, selectedProject]);
+    for (const project of projects) {
+      const tabs = Array.isArray(project.tabs) ? project.tabs : [];
+      const matchingUrlTab = tabs.find((tab) => tab.url === activeBrowserTab.url);
+
+      if (matchingUrlTab) {
+        return {
+          projectId: project.id,
+          tabId: matchingUrlTab.id,
+        };
+      }
+    }
+
+    return null;
+  }, [activeBrowserTab, state.projects]);
+
+  const activeSavedTabId =
+    activeProjectMatch && selectedProject?.id === activeProjectMatch.projectId
+      ? activeProjectMatch.tabId
+      : null;
 
   const searchResults = useMemo(
     () => getSearchResults(state.projects, searchQuery),
@@ -404,6 +433,7 @@ export default function App() {
         searchResultCount={searchResults.projects.length}
         isSearching={Boolean(searchResults.query)}
         searchInputRef={searchInputRef}
+        activeProjectId={activeProjectMatch?.projectId || null}
         onSearchChange={setSearchQuery}
         onClearSearch={() => setSearchQuery('')}
         onSelect={handleSelectProject}

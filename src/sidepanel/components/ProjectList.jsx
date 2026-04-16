@@ -6,6 +6,7 @@ export default function ProjectList({
   searchResultCount,
   isSearching,
   searchInputRef,
+  activeProjectId,
   onSearchChange,
   onClearSearch,
   onSelect,
@@ -59,10 +60,17 @@ export default function ProjectList({
           {projects.map((project) => (
             <button
               key={project.id}
-              className={`project-item ${project.id === selectedProjectId ? 'is-active' : ''}`}
+              className={`project-item ${project.id === selectedProjectId ? 'is-active' : ''} ${
+                project.id === activeProjectId ? 'has-current-tab' : ''
+              }`}
               onClick={() => onSelect(project.id)}
             >
-              <span className="project-name">{project.name}</span>
+              <span className="project-title-row">
+                <span className="project-name">{project.name}</span>
+                {project.id === activeProjectId ? (
+                  <span className="current-project-pill">Current tab</span>
+                ) : null}
+              </span>
               <span className="project-meta">
                 {project.tabs.length} saved {project.tabs.length === 1 ? 'tab' : 'tabs'}
               </span>
