@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Workspace Organizer",
+  "description": "Save, organize, and restore sets of tabs as personal workspace projects.",
+  "version": "0.1.0",
+  "minimum_chrome_version": "114",
+  "permissions": ["storage", "tabs", "sidePanel"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Open Workspace Organizer"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}
