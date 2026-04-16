@@ -2,14 +2,16 @@ export default function ProjectList({
   projects,
   selectedProjectId,
   showArchived,
+  searchQuery,
+  searchResultCount,
+  isSearching,
+  searchInputRef,
+  onSearchChange,
+  onClearSearch,
   onSelect,
   onCreateProject,
   onToggleArchivedView,
 }) {
-  const visibleProjects = projects.filter((project) =>
-    showArchived ? project.isArchived : !project.isArchived,
-  );
-
   return (
     <aside className="project-list">
       <div className="panel-header">
@@ -22,13 +24,39 @@ export default function ProjectList({
         </button>
       </div>
 
-      <button className="link-button" onClick={onToggleArchivedView}>
-        {showArchived ? 'Show active projects' : 'Show archived projects'}
-      </button>
+      <div className="search-box">
+        <input
+          ref={searchInputRef}
+          className="search-input"
+          type="search"
+          value={searchQuery}
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder="Search projects, tabs, URLs..."
+          aria-label="Search projects and saved tabs"
+        />
+        <span className="search-shortcut">/</span>
+      </div>
 
-      {visibleProjects.length ? (
+      <div className="project-list-tools">
+        <button className="link-button" onClick={onToggleArchivedView} disabled={isSearching}>
+          {showArchived ? 'Show active projects' : 'Show archived projects'}
+        </button>
+        {isSearching ? (
+          <button className="link-button" onClick={onClearSearch}>
+            Clear search
+          </button>
+        ) : null}
+      </div>
+
+      {isSearching ? (
+        <p className="search-summary">
+          {searchResultCount} matching {searchResultCount === 1 ? 'project' : 'projects'}
+        </p>
+      ) : null}
+
+      {projects.length ? (
         <div className="project-items">
-          {visibleProjects.map((project) => (
+          {projects.map((project) => (
             <button
               key={project.id}
               className={`project-item ${project.id === selectedProjectId ? 'is-active' : ''}`}
@@ -38,12 +66,23 @@ export default function ProjectList({
               <span className="project-meta">
                 {project.tabs.length} saved {project.tabs.length === 1 ? 'tab' : 'tabs'}
               </span>
+              {project.searchMatches?.length ? (
+                <span className="project-search-meta">
+                  Matched {project.searchMatches.join(', ')}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
       ) : (
         <div className="empty-state compact">
-          <p>{showArchived ? 'No archived projects yet.' : 'Create a project to start saving tabs.'}</p>
+          <p>
+            {isSearching
+              ? 'No projects, notes, tab titles, or URLs matched that search.'
+              : showArchived
+                ? 'No archived projects yet.'
+                : 'Create a project to start saving tabs.'}
+          </p>
         </div>
       )}
     </aside>

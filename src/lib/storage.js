@@ -216,6 +216,58 @@ export async function moveSavedTab(projectId, tabId, direction) {
   );
 }
 
+export async function moveSavedTabToTop(projectId, tabId) {
+  const state = await getState();
+  return saveState(
+    updateProjectById(state, projectId, (project) => {
+      const currentIndex = project.tabs.findIndex((tab) => tab.id === tabId);
+
+      if (currentIndex <= 0) {
+        return project;
+      }
+
+      const tabs = [...project.tabs];
+      const [moved] = tabs.splice(currentIndex, 1);
+      tabs.unshift({
+        ...moved,
+        updatedAt: nowIso(),
+      });
+
+      return {
+        ...project,
+        tabs,
+      };
+    }),
+  );
+}
+
+export async function linkSavedTabToBrowserTab(projectId, tabId, browserTab) {
+  const state = await getState();
+  return saveState(
+    updateProjectById(state, projectId, (project) => {
+      const currentIndex = project.tabs.findIndex((tab) => tab.id === tabId);
+
+      if (currentIndex === -1) {
+        return project;
+      }
+
+      const tabs = [...project.tabs];
+      const [linkedTab] = tabs.splice(currentIndex, 1);
+      tabs.unshift({
+        ...linkedTab,
+        browserTabId: typeof browserTab.id === 'number' ? browserTab.id : null,
+        browserWindowId: typeof browserTab.windowId === 'number' ? browserTab.windowId : null,
+        updatedAt: nowIso(),
+      });
+
+      return {
+        ...project,
+        tabs,
+      };
+    }),
+  );
+}
+
 export async function linkRestoredTabsToProject(projectId, restoredTabLinks) {
   const state = await getState();
   return saveState(

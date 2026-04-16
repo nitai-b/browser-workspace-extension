@@ -8,9 +8,31 @@ import {
   SaveIcon,
 } from './Icons.jsx';
 
-function TabRow({ tab, index, total, isActive, onMove, onRemove }) {
+function splitForMiddleEllipsis(text) {
+  const value = text || '';
+  const midpoint = Math.ceil(value.length / 2);
+
+  return {
+    start: value.slice(0, midpoint),
+    end: value.slice(midpoint),
+  };
+}
+
+function MiddleEllipsisText({ text, className = '' }) {
+  const { start, end } = splitForMiddleEllipsis(text);
+
+  return (
+    <span className={`middle-ellipsis ${className}`} title={text}>
+      <span className="middle-ellipsis-start">{start}</span>
+      <span className="middle-ellipsis-dots">...</span>
+      <span className="middle-ellipsis-end">{end}</span>
+    </span>
+  );
+}
+
+function TabRow({ tab, index, total, isActive, isSearchMatch, onMove, onOpen, onRemove }) {
   function openSavedTab() {
-    chrome.tabs.create({ url: tab.url });
+    onOpen(tab);
   }
 
   function handleKeyDown(event) {
@@ -22,7 +44,7 @@ function TabRow({ tab, index, total, isActive, onMove, onRemove }) {
 
   return (
     <li
-      className={`saved-tab-item ${isActive ? 'is-current-tab' : ''}`}
+      className={`saved-tab-item ${isActive ? 'is-current-tab' : ''} ${isSearchMatch ? 'is-search-match' : ''}`}
       onClick={openSavedTab}
       onKeyDown={handleKeyDown}
       role="link"
@@ -32,10 +54,10 @@ function TabRow({ tab, index, total, isActive, onMove, onRemove }) {
       <div className="saved-tab-main">
         <div className="saved-tab-title-row">
           {tab.favIconUrl ? <img className="favicon" src={tab.favIconUrl} alt="" /> : <span className="favicon fallback" />}
-          <span className="saved-tab-title">{tab.title}</span>
+          <MiddleEllipsisText text={tab.title} className="saved-tab-title" />
           {isActive ? <span className="current-tab-pill">Current tab</span> : null}
         </div>
-        <p className="saved-tab-url">{tab.url}</p>
+        <MiddleEllipsisText text={tab.url} className="saved-tab-url" />
       </div>
 
       <div className="saved-tab-actions" onClick={(event) => event.stopPropagation()}>
@@ -82,8 +104,11 @@ export default function ProjectDetails({
   onExport,
   onImport,
   onMoveTab,
+  onOpenSavedTab,
   onRemoveTab,
   activeSavedTabId,
+  searchQuery,
+  searchTabIds,
 }) {
   if (!project) {
     return (
@@ -170,7 +195,9 @@ export default function ProjectDetails({
           <div className="section-header">
             <h3>Saved tabs</h3>
             <span className="count-pill">
-              {project.tabs.length} {project.tabs.length === 1 ? 'tab' : 'tabs'}
+              {searchQuery
+                ? `${searchTabIds.size} matching ${searchTabIds.size === 1 ? 'tab' : 'tabs'}`
+                : `${project.tabs.length} ${project.tabs.length === 1 ? 'tab' : 'tabs'}`}
             </span>
           </div>
 
@@ -183,7 +210,9 @@ export default function ProjectDetails({
                   index={index}
                   total={project.tabs.length}
                   isActive={tab.id === activeSavedTabId}
+                  isSearchMatch={searchTabIds.has(tab.id)}
                   onMove={onMoveTab}
+                  onOpen={onOpenSavedTab}
                   onRemove={onRemoveTab}
                 />
               ))}

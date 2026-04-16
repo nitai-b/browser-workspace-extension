@@ -177,6 +177,54 @@ h3 {
   gap: 8px;
 }
 
+.search-box {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.search-input {
+  width: 100%;
+  border: 1px solid var(--border-input);
+  border-radius: 999px;
+  background: var(--surface-item);
+  color: var(--text-primary);
+  padding: 9px 34px 9px 12px;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.search-shortcut {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 6px;
+  pointer-events: none;
+}
+
+.project-list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.search-summary {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0 0 8px;
+}
+
 .project-items {
   max-height: 220px;
   overflow: auto;
@@ -210,12 +258,19 @@ h3 {
 }
 
 .project-meta,
+.project-search-meta,
 .saved-tab-url {
   font-size: 11px;
   color: var(--text-muted);
 }
 
-.project-item.is-active .project-meta {
+.project-search-meta {
+  display: block;
+  margin-top: 4px;
+}
+
+.project-item.is-active .project-meta,
+.project-item.is-active .project-search-meta {
   color: color-mix(in srgb, var(--accent-foreground) 76%, transparent);
 }
 
@@ -361,8 +416,20 @@ h3 {
   box-shadow: inset 3px 0 0 var(--accent), 0 8px 22px var(--shadow-color);
 }
 
+.saved-tab-item.is-search-match {
+  border-color: var(--accent);
+  background:
+    linear-gradient(90deg, var(--accent-soft), transparent 42%),
+    var(--surface-item);
+}
+
+.saved-tab-item.is-current-tab.is-search-match {
+  box-shadow: inset 3px 0 0 var(--accent), 0 8px 22px var(--shadow-color);
+}
+
 .saved-tab-main {
   min-width: 0;
+  flex: 1;
 }
 
 .saved-tab-title-row {
@@ -373,15 +440,48 @@ h3 {
 }
 
 .saved-tab-title {
+  display: flex;
+  flex: 1;
+  min-width: 0;
   font-weight: 600;
   font-size: 14px;
 }
 
 .saved-tab-url {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: flex;
+  margin-top: 3px;
+}
+
+.middle-ellipsis {
+  display: flex;
+  min-width: 0;
   max-width: 100%;
+  overflow: hidden;
+}
+
+.middle-ellipsis-start,
+.middle-ellipsis-end,
+.middle-ellipsis-dots {
+  white-space: nowrap;
+}
+
+.middle-ellipsis-start {
+  min-width: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
+}
+
+.middle-ellipsis-dots {
+  flex: 0 0 auto;
+}
+
+.middle-ellipsis-end {
+  direction: rtl;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  unicode-bidi: plaintext;
 }
 
 .saved-tab-actions {

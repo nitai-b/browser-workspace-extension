@@ -32,6 +32,10 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   await syncSavedTabFromBrowserTab(tabId, tab);
 });
 
+chrome.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
+  await moveLinkedSavedTabToTop(tabId, windowId);
+});
+
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   await unlinkClosedBrowserTab(tabId);
 });
@@ -116,6 +120,44 @@ async function syncSavedTabFromBrowserTab(tabId, browserTab) {
       };
     }),
   }));
+
+  if (changed) {
+    await saveState({ ...state, projects });
+  }
+}
+
+async function moveLinkedSavedTabToTop(tabId, windowId) {
+  const state = await readState();
+  let changed = false;
+  const now = new Date().toISOString();
+
+  const projects = state.projects.map((project) => {
+    const currentIndex = project.tabs.findIndex(
+      (savedTab) =>
+        savedTab.browserTabId === tabId &&
+        savedTab.browserWindowId === windowId,
+    );
+
+    if (currentIndex <= 0) {
+      return project;
+    }
+
+    changed = true;
+    const tabs = [...project.tabs];
+    const [moved] = tabs.splice(currentIndex, 1);
+
+    return {
+      ...project,
+      updatedAt: now,
+      tabs: [
+        {
+          ...moved,
+          updatedAt: now,
+        },
+        ...tabs,
+      ],
+    };
+  });
 
   if (changed) {
     await saveState({ ...state, projects });

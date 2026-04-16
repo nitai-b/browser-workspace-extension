@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ProjectDetails from './components/ProjectDetails.jsx';
 import ProjectList from './components/ProjectList.jsx';
 import {
@@ -8,6 +8,7 @@ import {
   exportProjects,
   getState,
   importProjects,
+  linkSavedTabToBrowserTab,
   linkRestoredTabsToProject,
   moveSavedTab,
   removeSavedTab,
@@ -24,6 +25,7 @@ import {
   restoreProjectTabs,
 } from '../lib/chromeTabs.js';
 import { downloadJson } from '../lib/utils.js';
+import { getSearchResults } from '../lib/search.js';
 
 export default function App() {
   const [state, setState] = useState({ projects: [], selectedProjectId: null });
@@ -32,6 +34,8 @@ export default function App() {
   const [showArchived, setShowArchived] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [activeBrowserTab, setActiveBrowserTab] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef(null);
 
   const selectedProject = useMemo(
     () => state.projects.find((project) => project.id === state.selectedProjectId) || null,
@@ -132,6 +136,89 @@ export default function App() {
     const matchingUrlTab = selectedProject.tabs.find((tab) => tab.url === activeBrowserTab.url);
     return matchingUrlTab?.id || null;
   }, [activeBrowserTab, selectedProject]);
+
+  const searchResults = useMemo(
+    () => getSearchResults(state.projects, searchQuery),
+    [state.projects, searchQuery],
+  );
+
+  const visibleProjects = useMemo(() => {
+    if (searchResults.query) {
+      return searchResults.projects;
+    }
+
+    return state.projects.filter((project) =>
+      showArchived ? project.isArchived : !project.isArchived,
+    );
+  }, [searchResults, showArchived, state.projects]);
+
+  const selectedProjectSearchTabIds = useMemo(() => {
+    if (!selectedProject || !searchResults.query) {
+      return new Set();
+    }
+
+    return searchResults.tabIdsByProjectId.get(selectedProject.id) || new Set();
+  }, [searchResults, selectedProject]);
+
+  useEffect(() => {
+    function handleSearchShortcut(event) {
+      const target = event.target;
+      const isEditable =
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT');
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+
+      if (event.key === '/' && !isEditable) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+
+      if (event.key === 'Escape' && document.activeElement === searchInputRef.current) {
+        setSearchQuery('');
+        searchInputRef.current?.blur();
+        return;
+      }
+
+      if (
+        event.key.length === 1 &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !isEditable
+      ) {
+        setSearchQuery(event.key);
+        searchInputRef.current?.focus();
+      }
+    }
+
+    window.addEventListener('keydown', handleSearchShortcut);
+
+    return () => {
+      window.removeEventListener('keydown', handleSearchShortcut);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!searchResults.query || !searchResults.projects.length) {
+      return;
+    }
+
+    const selectedProjectIsVisible = searchResults.projectIds.has(state.selectedProjectId);
+
+    if (!selectedProjectIsVisible) {
+      selectProject(searchResults.projects[0].id);
+    }
+  }, [searchResults, state.selectedProjectId]);
 
   function showMessage(message) {
     setFeedback(message);
@@ -250,6 +337,15 @@ export default function App() {
     await moveSavedTab(selectedProject.id, tabId, direction);
   }
 
+  async function handleOpenSavedTab(tab) {
+    if (!selectedProject) {
+      return;
+    }
+
+    const browserTab = await chrome.tabs.create({ url: tab.url });
+    await linkSavedTabToBrowserTab(selectedProject.id, tab.id, browserTab);
+  }
+
   async function handleRestoreProject() {
     if (!selectedProject) {
       return;
@@ -301,9 +397,15 @@ export default function App() {
   return (
     <main className="app-shell">
       <ProjectList
-        projects={state.projects}
+        projects={visibleProjects}
         selectedProjectId={state.selectedProjectId}
         showArchived={showArchived}
+        searchQuery={searchQuery}
+        searchResultCount={searchResults.projects.length}
+        isSearching={Boolean(searchResults.query)}
+        searchInputRef={searchInputRef}
+        onSearchChange={setSearchQuery}
+        onClearSearch={() => setSearchQuery('')}
         onSelect={handleSelectProject}
         onCreateProject={handleCreateProject}
         onToggleArchivedView={() => setShowArchived((value) => !value)}
@@ -325,8 +427,11 @@ export default function App() {
           onExport={handleExport}
           onImport={handleImport}
           onMoveTab={handleMoveTab}
+          onOpenSavedTab={handleOpenSavedTab}
           onRemoveTab={handleRemoveTab}
           activeSavedTabId={activeSavedTabId}
+          searchQuery={searchResults.query}
+          searchTabIds={selectedProjectSearchTabIds}
         />
       </div>
     </main>
