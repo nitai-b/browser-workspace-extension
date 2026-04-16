@@ -19,6 +19,8 @@ import {
   updateProjectNotes,
 } from '../lib/storage.js';
 import {
+  findOpenBrowserTabForSavedTab,
+  focusBrowserTab,
   getCurrentTab,
   getCurrentWindowTabs,
   getSaveableTabs,
@@ -371,8 +373,16 @@ export default function App() {
       return;
     }
 
-    const browserTab = await chrome.tabs.create({ url: tab.url });
-    await linkSavedTabToBrowserTab(selectedProject.id, tab.id, browserTab);
+    try {
+      const existingBrowserTab = await findOpenBrowserTabForSavedTab(tab);
+      const browserTab = existingBrowserTab || (await chrome.tabs.create({ url: tab.url, active: true }));
+      const focusedBrowserTab = await focusBrowserTab(browserTab);
+
+      await linkSavedTabToBrowserTab(selectedProject.id, tab.id, focusedBrowserTab || browserTab);
+    } catch (error) {
+      console.error('Failed to open saved tab.', error);
+      showMessage('Could not open that saved tab.');
+    }
   }
 
   async function handleRestoreProject() {

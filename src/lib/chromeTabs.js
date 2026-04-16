@@ -49,6 +49,40 @@ export async function getCurrentWindowTabs() {
   return chrome.tabs.query({ currentWindow: true });
 }
 
+export async function findOpenBrowserTabForSavedTab(savedTab) {
+  if (typeof savedTab.browserTabId === 'number') {
+    try {
+      const linkedTab = await chrome.tabs.get(savedTab.browserTabId);
+
+      if (
+        linkedTab &&
+        linkedTab.url === savedTab.url &&
+        (typeof savedTab.browserWindowId !== 'number' ||
+          linkedTab.windowId === savedTab.browserWindowId)
+      ) {
+        return linkedTab;
+      }
+    } catch (error) {
+      // The linked browser tab no longer exists, so fall back to URL matching.
+    }
+  }
+
+  const matchingTabs = await chrome.tabs.query({ url: savedTab.url });
+  return matchingTabs[0] || null;
+}
+
+export async function focusBrowserTab(tab) {
+  if (!tab || typeof tab.id !== 'number') {
+    return null;
+  }
+
+  if (typeof tab.windowId === 'number') {
+    await chrome.windows.update(tab.windowId, { focused: true });
+  }
+
+  return chrome.tabs.update(tab.id, { active: true });
+}
+
 export function getSaveableTabs(tabs) {
   return tabs.filter((tab) => isSaveableUrl(tab.url)).map(toSavedTab);
 }
