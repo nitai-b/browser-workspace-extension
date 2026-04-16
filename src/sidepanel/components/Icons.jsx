@@ -26,6 +26,15 @@ export function SaveIcon() {
   );
 }
 
+export function PlusIcon() {
+  return (
+    <BaseIcon>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </BaseIcon>
+  );
+}
+
 export function RestoreIcon() {
   return (
     <BaseIcon>

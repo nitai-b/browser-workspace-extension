@@ -13,7 +13,11 @@ function getProjectMatches(project, query) {
     matches.push('project');
   }
 
-  if (includesQuery(project.notes, query)) {
+  const matchingNotes = Array.isArray(project.notes)
+    ? project.notes.filter((note) => includesQuery(note.title, query) || includesQuery(note.body, query))
+    : [];
+
+  if (matchingNotes.length) {
     matches.push('notes');
   }
 

@@ -18,6 +18,39 @@ function normalizeSavedTab(tab) {
   };
 }
 
+function normalizeProjectNote(note) {
+  const now = nowIso();
+
+  return {
+    id: typeof note.id === 'string' ? note.id : createId(),
+    title: typeof note.title === 'string' ? note.title : '',
+    body: typeof note.body === 'string' ? note.body : '',
+    createdAt: typeof note.createdAt === 'string' ? note.createdAt : now,
+    updatedAt: typeof note.updatedAt === 'string' ? note.updatedAt : now,
+  };
+}
+
+function normalizeProjectNotes(project) {
+  if (Array.isArray(project.notes)) {
+    return project.notes.map(normalizeProjectNote);
+  }
+
+  if (typeof project.notes === 'string' && project.notes.trim()) {
+    const now = nowIso();
+
+    return [
+      normalizeProjectNote({
+        title: 'Project note',
+        body: project.notes,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    ];
+  }
+
+  return [];
+}
+
 function normalizeProject(project) {
   return {
     id: typeof project.id === 'string' ? project.id : createId(),
@@ -25,11 +58,70 @@ function normalizeProject(project) {
       typeof project.name === 'string' && project.name.trim()
         ? project.name.trim()
         : DEFAULT_PROJECT_NAME,
-    notes: typeof project.notes === 'string' ? project.notes : '',
+    notes: normalizeProjectNotes(project),
     isArchived: Boolean(project.isArchived),
     createdAt: typeof project.createdAt === 'string' ? project.createdAt : nowIso(),
     updatedAt: typeof project.updatedAt === 'string' ? project.updatedAt : nowIso(),
     tabs: Array.isArray(project.tabs) ? project.tabs.map(normalizeSavedTab) : [],
+  };
+}
+
+function getTabMergeKey(tab) {
+  return tab.url;
+}
+
+function getNoteMergeKey(note) {
+  return `${note.title.trim().toLowerCase()}\n${note.body.trim()}`;
+}
+
+function mergeByKey(existingItems, incomingItems, getKey) {
+  const keys = new Set(existingItems.map(getKey).filter(Boolean));
+  const mergedItems = [...existingItems];
+  let addedCount = 0;
+  let skippedCount = 0;
+
+  for (const incomingItem of incomingItems) {
+    const key = getKey(incomingItem);
+
+    if (key && keys.has(key)) {
+      skippedCount += 1;
+      continue;
+    }
+
+    if (key) {
+      keys.add(key);
+    }
+
+    mergedItems.push(incomingItem);
+    addedCount += 1;
+  }
+
+  return {
+    items: mergedItems,
+    addedCount,
+    skippedCount,
+  };
+}
+
+function mergeProject(existingProject, incomingProject) {
+  const tabMerge = mergeByKey(existingProject.tabs, incomingProject.tabs, getTabMergeKey);
+  const noteMerge = mergeByKey(existingProject.notes, incomingProject.notes, getNoteMergeKey);
+  const changed = tabMerge.addedCount > 0 || noteMerge.addedCount > 0;
+
+  return {
+    project: changed
+      ? {
+          ...existingProject,
+          isArchived: existingProject.isArchived && incomingProject.isArchived,
+          updatedAt: nowIso(),
+          tabs: tabMerge.items,
+          notes: noteMerge.items,
+        }
+      : existingProject,
+    addedTabs: tabMerge.addedCount,
+    skippedTabs: tabMerge.skippedCount,
+    addedNotes: noteMerge.addedCount,
+    skippedNotes: noteMerge.skippedCount,
   };
 }
 
@@ -153,7 +245,60 @@ export async function updateProjectNotes(projectId, notes) {
   return saveState(
     updateProjectById(state, projectId, (project) => ({
       ...project,
-      notes,
+      notes: Array.isArray(notes) ? notes.map(normalizeProjectNote) : normalizeProjectNotes({ notes }),
+    })),
+  );
+}
+
+export async function addProjectNote(projectId, note) {
+  const state = await getState();
+  const createdAt = nowIso();
+
+  return saveState(
+    updateProjectById(state, projectId, (project) => ({
+      ...project,
+      notes: [
+        ...project.notes,
+        normalizeProjectNote({
+          ...note,
+          createdAt,
+          updatedAt: createdAt,
+        }),
+      ],
+    })),
+  );
+}
+
+export async function updateProjectNote(projectId, noteId, updates) {
+  const state = await getState();
+
+  return saveState(
+    updateProjectById(state, projectId, (project) => ({
+      ...project,
+      notes: project.notes.map((note) => {
+        if (note.id !== noteId) {
+          return note;
+        }
+
+        return normalizeProjectNote({
+          ...note,
+          ...updates,
+          id: note.id,
+          createdAt: note.createdAt,
+          updatedAt: nowIso(),
+        });
+      }),
+    })),
+  );
+}
+
+export async function deleteProjectNote(projectId, noteId) {
+  const state = await getState();
+
+  return saveState(
+    updateProjectById(state, projectId, (project) => ({
+      ...project,
+      notes: project.notes.filter((note) => note.id !== noteId),
     })),
   );
 }
@@ -296,11 +441,84 @@ export async function exportProjects() {
 }
 
 export async function importProjects(rawValue) {
-  const nextState = normalizeState(rawValue);
+  const importedState = normalizeState(rawValue);
 
-  if (!nextState.projects.length) {
+  if (!importedState.projects.length) {
     throw new Error('The imported file does not contain any projects.');
   }
 
-  return saveState(nextState);
+  const currentState = await getState();
+  const projects = [...currentState.projects];
+  const projectIds = new Set(projects.map((project) => project.id));
+  const projectIndexesById = new Map(projects.map((project, index) => [project.id, index]));
+  const projectIndexesByName = new Map(
+    projects.map((project, index) => [project.name.trim().toLowerCase(), index]),
+  );
+  const summary = {
+    addedProjects: 0,
+    mergedProjects: 0,
+    skippedProjects: 0,
+    addedTabs: 0,
+    skippedTabs: 0,
+    addedNotes: 0,
+    skippedNotes: 0,
+  };
+
+  for (const incomingProject of importedState.projects) {
+    const projectNameKey = incomingProject.name.trim().toLowerCase();
+    const existingIndex = projectIndexesById.has(incomingProject.id)
+      ? projectIndexesById.get(incomingProject.id)
+      : projectIndexesByName.get(projectNameKey);
+
+    if (typeof existingIndex === 'number') {
+      const merge = mergeProject(projects[existingIndex], incomingProject);
+      projects[existingIndex] = merge.project;
+      summary.addedTabs += merge.addedTabs;
+      summary.skippedTabs += merge.skippedTabs;
+      summary.addedNotes += merge.addedNotes;
+      summary.skippedNotes += merge.skippedNotes;
+
+      if (merge.addedTabs || merge.addedNotes) {
+        summary.mergedProjects += 1;
+      } else {
+        summary.skippedProjects += 1;
+      }
+
+      continue;
+    }
+
+    let project = incomingProject;
+
+    if (projectIds.has(project.id)) {
+      project = {
+        ...project,
+        id: createId(),
+      };
+    }
+
+    projects.push(project);
+    const nextIndex = projects.length - 1;
+    projectIds.add(project.id);
+    projectIndexesById.set(project.id, nextIndex);
+    projectIndexesByName.set(projectNameKey, nextIndex);
+    summary.addedProjects += 1;
+    summary.addedTabs += project.tabs.length;
+    summary.addedNotes += project.notes.length;
+  }
+
+  const selectedProjectId =
+    currentState.selectedProjectId ||
+    importedState.selectedProjectId ||
+    projects[0]?.id ||
+    null;
+  const state = await saveState({
+    ...currentState,
+    selectedProjectId,
+    projects,
+  });
+
+  return {
+    state,
+    summary,
+  };
 }

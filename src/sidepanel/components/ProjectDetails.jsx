@@ -1,12 +1,15 @@
+import { useEffect, useState } from 'react';
 import {
   ArchiveIcon,
   DeleteIcon,
   EditIcon,
   ExportIcon,
   ImportIcon,
+  PlusIcon,
   RestoreIcon,
   SaveIcon,
 } from './Icons.jsx';
+import { getFormattedJsonSize } from '../../lib/utils.js';
 
 function splitForMiddleEllipsis(text) {
   const value = text || '';
@@ -90,14 +93,69 @@ function TabRow({ tab, index, total, isActive, isSearchMatch, onMove, onOpen, on
   );
 }
 
+function NoteCard({ note, onSave, onDelete }) {
+  const [titleDraft, setTitleDraft] = useState(note.title);
+  const [bodyDraft, setBodyDraft] = useState(note.body);
+
+  useEffect(() => {
+    setTitleDraft(note.title);
+    setBodyDraft(note.body);
+  }, [note.id, note.title, note.body]);
+
+  const hasChanges = titleDraft !== note.title || bodyDraft !== note.body;
+
+  function saveNote() {
+    onSave(note.id, {
+      title: titleDraft,
+      body: bodyDraft,
+    });
+  }
+
+  return (
+    <article className="note-item">
+      <div className="note-title-row">
+        <input
+          className="note-title-input"
+          value={titleDraft}
+          onChange={(event) => setTitleDraft(event.target.value)}
+          placeholder="Note title"
+          aria-label="Note title"
+        />
+        <button
+          className="icon-button danger icon-only-button"
+          onClick={() => onDelete(note.id)}
+          title="Delete note"
+          aria-label="Delete note"
+        >
+          <DeleteIcon />
+        </button>
+      </div>
+      <textarea
+        className="notes-input"
+        value={bodyDraft}
+        onChange={(event) => setBodyDraft(event.target.value)}
+        placeholder="Add context, next steps, or reminders for this workspace."
+      />
+      <div className="note-actions">
+        <button className="secondary-button" onClick={saveNote} disabled={!hasChanges}>
+          <span className="button-label">
+            Save Note
+            <SaveIcon />
+          </span>
+        </button>
+      </div>
+    </article>
+  );
+}
+
 export default function ProjectDetails({
   project,
-  notesDraft,
   onRename,
   onDelete,
   onArchiveToggle,
-  onNotesChange,
-  onSaveNotes,
+  onAddNote,
+  onUpdateNote,
+  onDeleteNote,
   onSaveCurrentTab,
   onSaveCurrentWindow,
   onRestoreProject,
@@ -127,6 +185,9 @@ export default function ProjectDetails({
         <div>
           <p className="eyebrow">{project.isArchived ? 'Archived project' : 'Active project'}</p>
           <h2>{project.name}</h2>
+          <p className="project-size-meta">
+            Estimated storage: {getFormattedJsonSize(project)}
+          </p>
         </div>
         <div className="header-actions">
           <button
@@ -227,19 +288,29 @@ export default function ProjectDetails({
         <section className="notes-panel">
           <div className="section-header">
             <h3>Notes</h3>
-            <button className="secondary-button" onClick={onSaveNotes}>
+            <button className="secondary-button" onClick={onAddNote}>
               <span className="button-label">
-                Save Notes
-                <SaveIcon />
+                Add Note
+                <PlusIcon />
               </span>
             </button>
           </div>
-          <textarea
-            className="notes-input"
-            value={notesDraft}
-            onChange={(event) => onNotesChange(event.target.value)}
-            placeholder="Add context, next steps, or reminders for this workspace."
-          />
+          {project.notes.length ? (
+            <div className="note-list">
+              {project.notes.map((note) => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  onSave={onUpdateNote}
+                  onDelete={onDeleteNote}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state compact">
+              <p>No notes yet. Add a note to capture context for this project.</p>
+            </div>
+          )}
         </section>
       </div>
     </section>

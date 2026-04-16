@@ -280,9 +280,14 @@ h3 {
 
 .project-meta,
 .project-search-meta,
+.project-size-meta,
 .saved-tab-url {
   font-size: 11px;
   color: var(--text-muted);
+}
+
+.project-size-meta {
+  margin-top: 4px;
 }
 
 .project-search-meta {
@@ -291,6 +296,7 @@ h3 {
 }
 
 .project-item.is-active .project-meta,
+.project-item.is-active .project-size-meta,
 .project-item.is-active .project-search-meta {
   color: color-mix(in srgb, var(--accent-foreground) 76%, transparent);
 }
@@ -383,6 +389,50 @@ h3 {
   color: var(--text-primary);
   padding: 10px;
   margin-top: 10px;
+}
+
+.note-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.note-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-item);
+  padding: 10px;
+}
+
+.note-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.note-title-input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--border-input);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  padding: 8px 10px;
+  font-weight: 600;
+  outline: none;
+}
+
+.note-title-input:focus,
+.notes-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.note-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
 }
 
 .count-pill {

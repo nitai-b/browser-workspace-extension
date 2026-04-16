@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import ProjectDetails from './components/ProjectDetails.jsx';
 import ProjectList from './components/ProjectList.jsx';
 import {
+  addProjectNote,
   addTabsToProject,
   createProject,
+  deleteProjectNote,
   deleteProject,
   exportProjects,
   getState,
@@ -16,7 +18,7 @@ import {
   renameProject,
   selectProject,
   setProjectArchived,
-  updateProjectNotes,
+  updateProjectNote,
 } from '../lib/storage.js';
 import {
   findOpenBrowserTabForSavedTab,
@@ -33,7 +35,6 @@ import { getSearchResults } from '../lib/search.js';
 export default function App() {
   const [state, setState] = useState({ projects: [], selectedProjectId: null });
   const [loading, setLoading] = useState(true);
-  const [notesDraft, setNotesDraft] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [activeBrowserTab, setActiveBrowserTab] = useState(null);
@@ -76,10 +77,6 @@ export default function App() {
       chrome.storage.onChanged.removeListener(handleChange);
     };
   }, []);
-
-  useEffect(() => {
-    setNotesDraft(selectedProject?.notes || '');
-  }, [selectedProject?.id, selectedProject?.notes]);
 
   useEffect(() => {
     let isMounted = true;
@@ -333,13 +330,40 @@ export default function App() {
     await saveTabsToCurrentProject(tabs);
   }
 
-  async function handleSaveNotes() {
+  async function handleAddNote() {
     if (!selectedProject) {
       return;
     }
 
-    await updateProjectNotes(selectedProject.id, notesDraft);
-    showMessage('Notes saved.');
+    await addProjectNote(selectedProject.id, {
+      title: '',
+      body: '',
+    });
+    showMessage('Note added.');
+  }
+
+  async function handleUpdateNote(noteId, updates) {
+    if (!selectedProject) {
+      return;
+    }
+
+    await updateProjectNote(selectedProject.id, noteId, updates);
+    showMessage('Note saved.');
+  }
+
+  async function handleDeleteNote(noteId) {
+    if (!selectedProject) {
+      return;
+    }
+
+    const confirmed = window.confirm('Delete this note?');
+
+    if (!confirmed) {
+      return;
+    }
+
+    await deleteProjectNote(selectedProject.id, noteId);
+    showMessage('Note deleted.');
   }
 
   async function handleArchiveToggle() {
@@ -416,8 +440,10 @@ export default function App() {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      await importProjects(data);
-      showMessage('Projects imported.');
+      const { summary } = await importProjects(data);
+      showMessage(
+        `Imported ${summary.addedProjects} new ${summary.addedProjects === 1 ? 'project' : 'projects'} and merged ${summary.mergedProjects}.`,
+      );
     } catch (error) {
       showMessage(error.message || 'Could not import that JSON file.');
     }
@@ -455,12 +481,12 @@ export default function App() {
         {feedback ? <div className="feedback-banner">{feedback}</div> : null}
         <ProjectDetails
           project={selectedProject}
-          notesDraft={notesDraft}
           onRename={handleRenameProject}
           onDelete={handleDeleteProject}
           onArchiveToggle={handleArchiveToggle}
-          onNotesChange={setNotesDraft}
-          onSaveNotes={handleSaveNotes}
+          onAddNote={handleAddNote}
+          onUpdateNote={handleUpdateNote}
+          onDeleteNote={handleDeleteNote}
           onSaveCurrentTab={handleSaveCurrentTab}
           onSaveCurrentWindow={handleSaveCurrentWindow}
           onRestoreProject={handleRestoreProject}

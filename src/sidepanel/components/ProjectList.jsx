@@ -1,3 +1,5 @@
+import { getFormattedJsonSize } from '../../lib/utils.js';
+
 export default function ProjectList({
   projects,
   selectedProjectId,
@@ -73,6 +75,8 @@ export default function ProjectList({
               </span>
               <span className="project-meta">
                 {project.tabs.length} saved {project.tabs.length === 1 ? 'tab' : 'tabs'}
+                <span aria-hidden="true"> · </span>
+                {getFormattedJsonSize(project)}
               </span>
               {project.searchMatches?.length ? (
                 <span className="project-search-meta">
