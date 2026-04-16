@@ -84,23 +84,69 @@ a {
 }
 
 .app-shell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   min-height: 100vh;
-}
-
-.project-list {
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-sidebar);
-  backdrop-filter: blur(12px);
-  padding: 16px 12px;
-}
-
-.details-shell {
   padding: 12px;
 }
 
+.project-list {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: var(--surface-sidebar);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 40px var(--shadow-color);
+  padding: 14px;
+}
+
+.details-shell {
+  flex: 1;
+  min-height: 0;
+}
+
+.app-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.view-tabs {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-button);
+  padding: 3px;
+}
+
+.view-tab {
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.view-tab.is-active {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
 .project-details {
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px var(--shadow-color);
+  padding: 14px;
+}
+
+.open-tabs-view {
+  flex: 1;
+  min-height: 0;
   background: var(--surface-panel);
   border: 1px solid var(--border-subtle);
   border-radius: 18px;
@@ -226,7 +272,7 @@ h3 {
 }
 
 .project-items {
-  max-height: 220px;
+  max-height: none;
   overflow: auto;
 }
 
@@ -363,6 +409,10 @@ h3 {
   background: transparent;
   color: var(--text-primary);
   padding-left: 0;
+}
+
+.back-button {
+  margin-bottom: 8px;
 }
 
 .content-stack {
@@ -531,12 +581,18 @@ h3 {
   display: flex;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 600;
   font-size: 14px;
 }
 
 .saved-tab-url {
-  display: flex;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   margin-top: 3px;
 }
 
@@ -633,22 +689,6 @@ button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
   transform: none;
-}
-
-@media (min-width: 760px) {
-  .app-shell {
-    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
-  }
-
-  .project-list {
-    border-right: 1px solid var(--border-subtle);
-    border-bottom: 0;
-  }
-
-  .project-items {
-    max-height: none;
-    overflow: visible;
-  }
 }
 
 @media (min-width: 1040px) {

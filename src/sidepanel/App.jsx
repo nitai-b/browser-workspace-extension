@@ -23,9 +23,11 @@ import {
 import {
   findOpenBrowserTabForSavedTab,
   focusBrowserTab,
+  getAllOpenTabs,
   getCurrentTab,
   getCurrentWindowTabs,
   getSaveableTabs,
+  isSaveableUrl,
   isSameBrowserTab,
   restoreProjectTabs,
 } from '../lib/chromeTabs.js';
@@ -38,6 +40,8 @@ export default function App() {
   const [showArchived, setShowArchived] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [activeBrowserTab, setActiveBrowserTab] = useState(null);
+  const [openTabs, setOpenTabs] = useState([]);
+  const [activeView, setActiveView] = useState('projects');
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef(null);
 
@@ -75,6 +79,40 @@ export default function App() {
     return () => {
       isMounted = false;
       chrome.storage.onChanged.removeListener(handleChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function refreshOpenTabs() {
+      try {
+        const tabs = await getAllOpenTabs();
+
+        if (isMounted) {
+          setOpenTabs(tabs.filter((tab) => isSaveableUrl(tab.url)));
+        }
+      } catch (error) {
+        console.error('Failed to refresh open tabs.', error);
+      }
+    }
+
+    function handleTabChanged() {
+      refreshOpenTabs();
+    }
+
+    refreshOpenTabs();
+    chrome.tabs.onActivated.addListener(handleTabChanged);
+    chrome.tabs.onUpdated.addListener(handleTabChanged);
+    chrome.tabs.onRemoved.addListener(handleTabChanged);
+    chrome.windows.onFocusChanged.addListener(handleTabChanged);
+
+    return () => {
+      isMounted = false;
+      chrome.tabs.onActivated.removeListener(handleTabChanged);
+      chrome.tabs.onUpdated.removeListener(handleTabChanged);
+      chrome.tabs.onRemoved.removeListener(handleTabChanged);
+      chrome.windows.onFocusChanged.removeListener(handleTabChanged);
     };
   }, []);
 
@@ -266,6 +304,11 @@ export default function App() {
 
   async function handleSelectProject(projectId) {
     await selectProject(projectId);
+    setActiveView('project');
+  }
+
+  function handleBackToProjects() {
+    setActiveView('projects');
   }
 
   async function handleRenameProject() {
@@ -409,6 +452,15 @@ export default function App() {
     }
   }
 
+  async function handleFocusOpenTab(tab) {
+    try {
+      await focusBrowserTab(tab);
+    } catch (error) {
+      console.error('Failed to focus open tab.', error);
+      showMessage('Could not focus that tab.');
+    }
+  }
+
   async function handleRestoreProject() {
     if (!selectedProject) {
       return;
@@ -461,45 +513,138 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <ProjectList
-        projects={visibleProjects}
-        selectedProjectId={state.selectedProjectId}
-        showArchived={showArchived}
-        searchQuery={searchQuery}
-        searchResultCount={searchResults.projects.length}
-        isSearching={Boolean(searchResults.query)}
-        searchInputRef={searchInputRef}
-        activeProjectId={activeProjectMatch?.projectId || null}
-        onSearchChange={setSearchQuery}
-        onClearSearch={() => setSearchQuery('')}
-        onSelect={handleSelectProject}
-        onCreateProject={handleCreateProject}
-        onToggleArchivedView={() => setShowArchived((value) => !value)}
-      />
-
-      <div className="details-shell">
-        {feedback ? <div className="feedback-banner">{feedback}</div> : null}
-        <ProjectDetails
-          project={selectedProject}
-          onRename={handleRenameProject}
-          onDelete={handleDeleteProject}
-          onArchiveToggle={handleArchiveToggle}
-          onAddNote={handleAddNote}
-          onUpdateNote={handleUpdateNote}
-          onDeleteNote={handleDeleteNote}
-          onSaveCurrentTab={handleSaveCurrentTab}
-          onSaveCurrentWindow={handleSaveCurrentWindow}
-          onRestoreProject={handleRestoreProject}
-          onExport={handleExport}
-          onImport={handleImport}
-          onMoveTab={handleMoveTab}
-          onOpenSavedTab={handleOpenSavedTab}
-          onRemoveTab={handleRemoveTab}
-          activeSavedTabId={activeSavedTabId}
-          searchQuery={searchResults.query}
-          searchTabIds={selectedProjectSearchTabIds}
-        />
+      <div className="app-topbar">
+        <div>
+          <p className="eyebrow">Workspace Organizer</p>
+          <h1>{activeView === 'project' ? selectedProject?.name || 'Project' : 'Workspace'}</h1>
+        </div>
+        <nav className="view-tabs" aria-label="Workspace views">
+          <button
+            className={`view-tab ${activeView !== 'openTabs' ? 'is-active' : ''}`}
+            onClick={() => setActiveView('projects')}
+          >
+            Projects
+          </button>
+          <button
+            className={`view-tab ${activeView === 'openTabs' ? 'is-active' : ''}`}
+            onClick={() => setActiveView('openTabs')}
+          >
+            Open tabs
+          </button>
+        </nav>
       </div>
+
+      {feedback ? <div className="feedback-banner">{feedback}</div> : null}
+
+      {activeView === 'projects' ? (
+        <ProjectList
+          projects={visibleProjects}
+          selectedProjectId={state.selectedProjectId}
+          showArchived={showArchived}
+          searchQuery={searchQuery}
+          searchResultCount={searchResults.projects.length}
+          isSearching={Boolean(searchResults.query)}
+          searchInputRef={searchInputRef}
+          activeProjectId={activeProjectMatch?.projectId || null}
+          onSearchChange={setSearchQuery}
+          onClearSearch={() => setSearchQuery('')}
+          onSelect={handleSelectProject}
+          onCreateProject={handleCreateProject}
+          onToggleArchivedView={() => setShowArchived((value) => !value)}
+        />
+      ) : null}
+
+      {activeView === 'openTabs' ? (
+        <OpenTabsView
+          tabs={openTabs}
+          activeBrowserTab={activeBrowserTab}
+          onFocusTab={handleFocusOpenTab}
+        />
+      ) : null}
+
+      {activeView === 'project' ? (
+        <div className="details-shell">
+          <ProjectDetails
+            project={selectedProject}
+            onBack={handleBackToProjects}
+            onRename={handleRenameProject}
+            onDelete={handleDeleteProject}
+            onArchiveToggle={handleArchiveToggle}
+            onAddNote={handleAddNote}
+            onUpdateNote={handleUpdateNote}
+            onDeleteNote={handleDeleteNote}
+            onSaveCurrentTab={handleSaveCurrentTab}
+            onSaveCurrentWindow={handleSaveCurrentWindow}
+            onRestoreProject={handleRestoreProject}
+            onExport={handleExport}
+            onImport={handleImport}
+            onMoveTab={handleMoveTab}
+            onOpenSavedTab={handleOpenSavedTab}
+            onRemoveTab={handleRemoveTab}
+            activeSavedTabId={activeSavedTabId}
+            searchQuery={searchResults.query}
+            searchTabIds={selectedProjectSearchTabIds}
+          />
+        </div>
+      ) : null}
     </main>
+  );
+}
+
+function OpenTabsView({ tabs, activeBrowserTab, onFocusTab }) {
+  return (
+    <section className="open-tabs-view">
+      <div className="panel-header">
+        <div>
+          <p className="eyebrow">Browser</p>
+          <h2>Open tabs</h2>
+        </div>
+        <span className="count-pill">
+          {tabs.length} {tabs.length === 1 ? 'tab' : 'tabs'}
+        </span>
+      </div>
+
+      {tabs.length ? (
+        <ul className="saved-tab-list">
+          {tabs.map((tab) => (
+            <li
+              key={`${tab.windowId}-${tab.id}`}
+              className={`saved-tab-item ${isSameOpenTab(tab, activeBrowserTab) ? 'is-current-tab' : ''}`}
+              onClick={() => onFocusTab(tab)}
+              role="link"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onFocusTab(tab);
+                }
+              }}
+              title={`Go to ${tab.title || tab.url}`}
+            >
+              <div className="saved-tab-main">
+                <div className="saved-tab-title-row">
+                  {tab.favIconUrl ? <img className="favicon" src={tab.favIconUrl} alt="" /> : <span className="favicon fallback" />}
+                  <span className="saved-tab-title">{tab.title || tab.url}</span>
+                  {isSameOpenTab(tab, activeBrowserTab) ? <span className="current-tab-pill">Current tab</span> : null}
+                </div>
+                <span className="saved-tab-url">{tab.url}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="empty-state compact">
+          <p>No open browser tabs are available to show.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function isSameOpenTab(tab, activeBrowserTab) {
+  return Boolean(
+    activeBrowserTab &&
+      tab.id === activeBrowserTab.id &&
+      tab.windowId === activeBrowserTab.windowId,
   );
 }

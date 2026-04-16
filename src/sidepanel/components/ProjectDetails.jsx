@@ -150,6 +150,7 @@ function NoteCard({ note, onSave, onDelete }) {
 
 export default function ProjectDetails({
   project,
+  onBack,
   onRename,
   onDelete,
   onArchiveToggle,
@@ -181,6 +182,9 @@ export default function ProjectDetails({
 
   return (
     <section className="project-details">
+      <button className="link-button back-button" onClick={onBack}>
+        ← Projects
+      </button>
       <div className="panel-header panel-header-tight">
         <div>
           <p className="eyebrow">{project.isArchived ? 'Archived project' : 'Active project'}</p>

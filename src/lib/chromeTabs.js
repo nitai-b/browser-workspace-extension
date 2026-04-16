@@ -49,6 +49,10 @@ export async function getCurrentWindowTabs() {
   return chrome.tabs.query({ currentWindow: true });
 }
 
+export async function getAllOpenTabs() {
+  return chrome.tabs.query({});
+}
+
 export async function findOpenBrowserTabForSavedTab(savedTab) {
   if (typeof savedTab.browserTabId === 'number') {
     try {
