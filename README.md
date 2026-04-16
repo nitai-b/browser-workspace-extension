@@ -11,6 +11,8 @@ Workspace Organizer is a personal Brave/Chromium extension for saving, organizin
 - Reorder saved tabs with simple up/down controls
 - Add and edit per-project notes
 - Restore a project by opening all saved tabs in a new browser window
+- Highlight the saved project tab that matches the currently active browser tab
+- Keep a saved tab updated when the live browser tab it was saved from navigates
 - Import and export all project data as JSON
 - Skip restricted browser URLs such as `brave://` and `chrome://`
 
@@ -54,11 +56,27 @@ This runs `vite build --watch` and keeps the `dist/` folder up to date for reloa
 6. Select the generated `dist/` folder in this project.
 7. Click the extension action button to open the side panel.
 
+## Keyboard Shortcut
+
+The extension registers `_execute_action`, which you can configure in Brave:
+
+1. Open `brave://extensions/shortcuts`
+2. Find **Workspace Organizer**
+3. Set or change the shortcut for **Open Workspace Organizer side panel**
+
+The manifest suggests:
+
+- `Ctrl+Shift+Y` on Windows/Linux
+- `Command+Shift+Y` on macOS
+
+Whether the same shortcut also closes the side panel depends on current Brave/Chromium behavior. The extension guarantees the shortcut triggers the toolbar action that opens the panel.
+
 ## Development Notes
 
 - The extension uses the side panel as the primary UI. The toolbar action opens that panel.
 - The source of truth is extension-managed project data in `chrome.storage.local`, not browser tab groups.
 - Saved tabs are appended to projects as-is. Duplicate URLs are allowed.
+- Live browser-tab syncing is session scoped. If the extension or browser restarts, saved tabs remain stored, but the live tab association is cleared to avoid syncing against stale browser tab IDs.
 - Restricted internal browser pages cannot be saved and are skipped safely.
 - Import currently replaces the full stored state with the imported JSON payload.
 - The project is written in JavaScript to keep the local extension setup straightforward.

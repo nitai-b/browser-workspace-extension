@@ -8,6 +8,7 @@ import {
   exportProjects,
   getState,
   importProjects,
+  linkRestoredTabsToProject,
   moveSavedTab,
   removeSavedTab,
   renameProject,
@@ -19,6 +20,7 @@ import {
   getCurrentTab,
   getCurrentWindowTabs,
   getSaveableTabs,
+  isSameBrowserTab,
   restoreProjectTabs,
 } from '../lib/chromeTabs.js';
 import { downloadJson } from '../lib/utils.js';
@@ -29,6 +31,7 @@ export default function App() {
   const [notesDraft, setNotesDraft] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [activeBrowserTab, setActiveBrowserTab] = useState(null);
 
   const selectedProject = useMemo(
     () => state.projects.find((project) => project.id === state.selectedProjectId) || null,
@@ -70,6 +73,65 @@ export default function App() {
   useEffect(() => {
     setNotesDraft(selectedProject?.notes || '');
   }, [selectedProject?.id, selectedProject?.notes]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function refreshActiveBrowserTab() {
+      const tab = await getCurrentTab();
+
+      if (isMounted) {
+        setActiveBrowserTab(tab);
+      }
+    }
+
+    function handleActivated() {
+      refreshActiveBrowserTab();
+    }
+
+    function handleWindowFocusChanged() {
+      refreshActiveBrowserTab();
+    }
+
+    function handleUpdated(tabId) {
+      setActiveBrowserTab((currentTab) => {
+        if (currentTab?.id === tabId) {
+          refreshActiveBrowserTab();
+        }
+
+        return currentTab;
+      });
+    }
+
+    refreshActiveBrowserTab();
+    chrome.tabs.onActivated.addListener(handleActivated);
+    chrome.tabs.onUpdated.addListener(handleUpdated);
+    chrome.windows.onFocusChanged.addListener(handleWindowFocusChanged);
+
+    return () => {
+      isMounted = false;
+      chrome.tabs.onActivated.removeListener(handleActivated);
+      chrome.tabs.onUpdated.removeListener(handleUpdated);
+      chrome.windows.onFocusChanged.removeListener(handleWindowFocusChanged);
+    };
+  }, []);
+
+  const activeSavedTabId = useMemo(() => {
+    if (!selectedProject || !activeBrowserTab) {
+      return null;
+    }
+
+    const linkedSavedTab = selectedProject.tabs.find((tab) =>
+      isSameBrowserTab(tab, activeBrowserTab),
+    );
+
+    if (linkedSavedTab) {
+      return linkedSavedTab.id;
+    }
+
+    const matchingUrlTab = selectedProject.tabs.find((tab) => tab.url === activeBrowserTab.url);
+    return matchingUrlTab?.id || null;
+  }, [activeBrowserTab, selectedProject]);
 
   function showMessage(message) {
     setFeedback(message);
@@ -194,7 +256,8 @@ export default function App() {
     }
 
     try {
-      await restoreProjectTabs(selectedProject);
+      const restoredTabLinks = await restoreProjectTabs(selectedProject);
+      await linkRestoredTabsToProject(selectedProject.id, restoredTabLinks);
       showMessage('Project restored in a new window.');
     } catch (error) {
       showMessage(error.message);
@@ -263,6 +326,7 @@ export default function App() {
           onImport={handleImport}
           onMoveTab={handleMoveTab}
           onRemoveTab={handleRemoveTab}
+          activeSavedTabId={activeSavedTabId}
         />
       </div>
     </main>

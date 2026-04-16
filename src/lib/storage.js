@@ -11,7 +11,10 @@ function normalizeSavedTab(tab) {
     title: typeof tab.title === 'string' && tab.title.trim() ? tab.title : 'Untitled tab',
     url: typeof tab.url === 'string' ? tab.url : '',
     favIconUrl: typeof tab.favIconUrl === 'string' ? tab.favIconUrl : '',
+    browserTabId: typeof tab.browserTabId === 'number' ? tab.browserTabId : null,
+    browserWindowId: typeof tab.browserWindowId === 'number' ? tab.browserWindowId : null,
     createdAt: typeof tab.createdAt === 'string' ? tab.createdAt : nowIso(),
+    updatedAt: typeof tab.updatedAt === 'string' ? tab.updatedAt : nowIso(),
   };
 }
 
@@ -210,6 +213,29 @@ export async function moveSavedTab(projectId, tabId, direction) {
         tabs,
       };
     }),
+  );
+}
+
+export async function linkRestoredTabsToProject(projectId, restoredTabLinks) {
+  const state = await getState();
+  return saveState(
+    updateProjectById(state, projectId, (project) => ({
+      ...project,
+      tabs: project.tabs.map((savedTab) => {
+        const restoredLink = restoredTabLinks.find((link) => link.savedTabId === savedTab.id);
+        const browserTab = restoredLink?.browserTab;
+
+        if (!browserTab) {
+          return savedTab;
+        }
+
+        return {
+          ...savedTab,
+          browserTabId: typeof browserTab.id === 'number' ? browserTab.id : null,
+          browserWindowId: typeof browserTab.windowId === 'number' ? browserTab.windowId : null,
+        };
+      }),
+    })),
   );
 }
 

@@ -21,8 +21,19 @@ export function toSavedTab(tab) {
     title: tab.title || tab.url || 'Untitled tab',
     url: tab.url,
     favIconUrl: tab.favIconUrl || '',
+    browserTabId: typeof tab.id === 'number' ? tab.id : null,
+    browserWindowId: typeof tab.windowId === 'number' ? tab.windowId : null,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
+}
+
+export function isSameBrowserTab(savedTab, browserTab) {
+  return Boolean(
+    browserTab &&
+      savedTab.browserTabId === browserTab.id &&
+      savedTab.browserWindowId === browserTab.windowId,
+  );
 }
 
 export async function getCurrentTab() {
@@ -43,13 +54,18 @@ export function getSaveableTabs(tabs) {
 }
 
 export async function restoreProjectTabs(project) {
-  const urls = project.tabs
-    .map((tab) => tab.url)
-    .filter((url) => isSaveableUrl(url));
+  const restorableTabs = project.tabs.filter((tab) => isSaveableUrl(tab.url));
+  const urls = restorableTabs.map((tab) => tab.url);
 
   if (!urls.length) {
     throw new Error('This project has no restorable tabs.');
   }
 
-  await chrome.windows.create({ url: urls });
+  const window = await chrome.windows.create({ url: urls });
+  const createdTabs = window.tabs || [];
+
+  return restorableTabs.map((savedTab, index) => ({
+    savedTabId: savedTab.id,
+    browserTab: createdTabs[index],
+  }));
 }

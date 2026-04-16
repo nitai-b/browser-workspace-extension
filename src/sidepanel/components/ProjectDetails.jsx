@@ -1,17 +1,44 @@
-function TabRow({ tab, index, total, onMove, onRemove }) {
+import {
+  ArchiveIcon,
+  DeleteIcon,
+  EditIcon,
+  ExportIcon,
+  ImportIcon,
+  RestoreIcon,
+  SaveIcon,
+} from './Icons.jsx';
+
+function TabRow({ tab, index, total, isActive, onMove, onRemove }) {
+  function openSavedTab() {
+    chrome.tabs.create({ url: tab.url });
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openSavedTab();
+    }
+  }
+
   return (
-    <li className="saved-tab-item">
+    <li
+      className={`saved-tab-item ${isActive ? 'is-current-tab' : ''}`}
+      onClick={openSavedTab}
+      onKeyDown={handleKeyDown}
+      role="link"
+      tabIndex={0}
+      title={`Open ${tab.title}`}
+    >
       <div className="saved-tab-main">
         <div className="saved-tab-title-row">
           {tab.favIconUrl ? <img className="favicon" src={tab.favIconUrl} alt="" /> : <span className="favicon fallback" />}
-          <a className="saved-tab-title" href={tab.url} target="_blank" rel="noreferrer">
-            {tab.title}
-          </a>
+          <span className="saved-tab-title">{tab.title}</span>
+          {isActive ? <span className="current-tab-pill">Current tab</span> : null}
         </div>
         <p className="saved-tab-url">{tab.url}</p>
       </div>
 
-      <div className="saved-tab-actions">
+      <div className="saved-tab-actions" onClick={(event) => event.stopPropagation()}>
         <button
           className="icon-button"
           onClick={() => onMove(tab.id, 'up')}
@@ -28,8 +55,13 @@ function TabRow({ tab, index, total, onMove, onRemove }) {
         >
           ↓
         </button>
-        <button className="icon-button danger" onClick={() => onRemove(tab.id)} title="Remove tab">
-          Remove
+        <button
+          className="icon-button danger icon-only-button"
+          onClick={() => onRemove(tab.id)}
+          title="Delete saved tab"
+          aria-label="Delete saved tab"
+        >
+          <DeleteIcon />
         </button>
       </div>
     </li>
@@ -51,6 +83,7 @@ export default function ProjectDetails({
   onImport,
   onMoveTab,
   onRemoveTab,
+  activeSavedTabId,
 }) {
   if (!project) {
     return (
@@ -71,53 +104,68 @@ export default function ProjectDetails({
           <h2>{project.name}</h2>
         </div>
         <div className="header-actions">
-          <button className="secondary-button" onClick={onRename}>
-            Rename
+          <button
+            className="secondary-button icon-only-button"
+            onClick={onRename}
+            title="Rename project"
+            aria-label="Rename project"
+          >
+            <EditIcon />
           </button>
-          <button className="secondary-button" onClick={onArchiveToggle}>
-            {project.isArchived ? 'Unarchive' : 'Archive'}
+          <button
+            className="secondary-button icon-only-button"
+            onClick={onArchiveToggle}
+            title={project.isArchived ? 'Unarchive project' : 'Archive project'}
+            aria-label={project.isArchived ? 'Unarchive project' : 'Archive project'}
+          >
+            <ArchiveIcon />
           </button>
-          <button className="danger-button" onClick={onDelete}>
-            Delete
+          <button
+            className="danger-button icon-only-button"
+            onClick={onDelete}
+            title="Delete project"
+            aria-label="Delete project"
+          >
+            <DeleteIcon />
           </button>
         </div>
       </div>
 
       <div className="toolbar">
         <button className="primary-button" onClick={onSaveCurrentTab}>
-          Save current tab
+          <span className="button-label">
+            Current Tab
+            <SaveIcon />
+          </span>
         </button>
         <button className="secondary-button" onClick={onSaveCurrentWindow}>
-          Save current window
+          <span className="button-label">
+            Current Window
+            <SaveIcon />
+          </span>
         </button>
         <button className="secondary-button" onClick={onRestoreProject} disabled={!project.tabs.length}>
-          Restore project
+          <span className="button-label">
+            Project
+            <RestoreIcon />
+          </span>
         </button>
         <button className="secondary-button" onClick={onExport}>
-          Export JSON
+          <span className="button-label">
+            JSON
+            <ExportIcon />
+          </span>
         </button>
         <label className="secondary-button file-button">
-          Import JSON
+          <span className="button-label">
+            JSON
+            <ImportIcon />
+          </span>
           <input type="file" accept="application/json" onChange={onImport} />
         </label>
       </div>
 
-      <div className="content-grid">
-        <section className="notes-panel">
-          <div className="section-header">
-            <h3>Notes</h3>
-            <button className="secondary-button" onClick={onSaveNotes}>
-              Save notes
-            </button>
-          </div>
-          <textarea
-            className="notes-input"
-            value={notesDraft}
-            onChange={(event) => onNotesChange(event.target.value)}
-            placeholder="Add context, next steps, or reminders for this workspace."
-          />
-        </section>
-
+      <div className="content-stack">
         <section className="tabs-panel">
           <div className="section-header">
             <h3>Saved tabs</h3>
@@ -134,6 +182,7 @@ export default function ProjectDetails({
                   tab={tab}
                   index={index}
                   total={project.tabs.length}
+                  isActive={tab.id === activeSavedTabId}
                   onMove={onMoveTab}
                   onRemove={onRemoveTab}
                 />
@@ -144,6 +193,24 @@ export default function ProjectDetails({
               <p>No saved tabs yet. Use the save buttons above to capture your current workspace.</p>
             </div>
           )}
+        </section>
+
+        <section className="notes-panel">
+          <div className="section-header">
+            <h3>Notes</h3>
+            <button className="secondary-button" onClick={onSaveNotes}>
+              <span className="button-label">
+                Save Notes
+                <SaveIcon />
+              </span>
+            </button>
+          </div>
+          <textarea
+            className="notes-input"
+            value={notesDraft}
+            onChange={(event) => onNotesChange(event.target.value)}
+            placeholder="Add context, next steps, or reminders for this workspace."
+          />
         </section>
       </div>
     </section>
