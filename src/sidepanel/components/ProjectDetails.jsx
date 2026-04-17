@@ -11,28 +11,6 @@ import {
 } from './Icons.jsx';
 import { getFormattedJsonSize } from '../../lib/utils.js';
 
-function splitForMiddleEllipsis(text) {
-  const value = text || '';
-  const midpoint = Math.ceil(value.length / 2);
-
-  return {
-    start: value.slice(0, midpoint),
-    end: value.slice(midpoint),
-  };
-}
-
-function MiddleEllipsisText({ text, className = '' }) {
-  const { start, end } = splitForMiddleEllipsis(text);
-
-  return (
-    <span className={`middle-ellipsis ${className}`} title={text}>
-      <span className="middle-ellipsis-start">{start}</span>
-      <span className="middle-ellipsis-dots">...</span>
-      <span className="middle-ellipsis-end">{end}</span>
-    </span>
-  );
-}
-
 function TabRow({ tab, index, total, isActive, isSearchMatch, onMove, onOpen, onRemove }) {
   function openSavedTab() {
     onOpen(tab);
@@ -57,10 +35,14 @@ function TabRow({ tab, index, total, isActive, isSearchMatch, onMove, onOpen, on
       <div className="saved-tab-main">
         <div className="saved-tab-title-row">
           {tab.favIconUrl ? <img className="favicon" src={tab.favIconUrl} alt="" /> : <span className="favicon fallback" />}
-          <MiddleEllipsisText text={tab.title} className="saved-tab-title" />
+          <span className="saved-tab-title" title={tab.title}>
+            {tab.title}
+          </span>
           {isActive ? <span className="current-tab-pill">Current tab</span> : null}
         </div>
-        <MiddleEllipsisText text={tab.url} className="saved-tab-url" />
+        <span className="saved-tab-url" title={tab.url}>
+          {tab.url}
+        </span>
       </div>
 
       <div className="saved-tab-actions" onClick={(event) => event.stopPropagation()}>

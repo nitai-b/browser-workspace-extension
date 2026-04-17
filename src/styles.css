@@ -278,6 +278,7 @@ h3 {
 
 .project-item {
   width: 100%;
+  min-width: 0;
   text-align: left;
   padding: 10px;
   border-radius: 12px;
@@ -532,6 +533,8 @@ h3 {
   justify-content: space-between;
   align-items: flex-start;
   flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
   gap: 10px;
   padding: 10px;
   border: 1px solid var(--border-subtle);
@@ -567,20 +570,25 @@ h3 {
 
 .saved-tab-main {
   min-width: 0;
+  max-width: 100%;
   flex: 1;
+  overflow: hidden;
 }
 
 .saved-tab-title-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
   margin-bottom: 3px;
 }
 
 .saved-tab-title {
-  display: flex;
+  display: block;
   flex: 1;
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -590,42 +598,11 @@ h3 {
 
 .saved-tab-url {
   display: block;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-top: 3px;
-}
-
-.middle-ellipsis {
-  display: flex;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.middle-ellipsis-start,
-.middle-ellipsis-end,
-.middle-ellipsis-dots {
-  white-space: nowrap;
-}
-
-.middle-ellipsis-start {
-  min-width: 0;
-  overflow: hidden;
-  flex: 1 1 auto;
-}
-
-.middle-ellipsis-dots {
-  flex: 0 0 auto;
-}
-
-.middle-ellipsis-end {
-  direction: rtl;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-align: left;
-  unicode-bidi: plaintext;
 }
 
 .saved-tab-actions {
@@ -694,9 +671,12 @@ button:disabled {
 @media (min-width: 1040px) {
   .saved-tab-item {
     flex-direction: row;
+    align-items: center;
   }
 
   .saved-tab-actions {
     align-self: flex-start;
+    width: 112px;
+    justify-content: flex-end;
   }
 }
