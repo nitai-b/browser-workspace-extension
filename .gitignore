@@ -25,3 +25,4 @@ coverage
 *playwright*
 *.png
 *.txt
+*.pem
