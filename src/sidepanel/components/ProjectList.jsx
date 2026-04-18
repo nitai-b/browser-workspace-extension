@@ -1,3 +1,4 @@
+import { ExportIcon, ImportIcon } from './Icons.jsx';
 import { getFormattedJsonSize } from '../../lib/utils.js';
 
 export default function ProjectList({
@@ -13,6 +14,8 @@ export default function ProjectList({
   onClearSearch,
   onSelect,
   onCreateProject,
+  onExport,
+  onImport,
   onToggleArchivedView,
 }) {
   return (
@@ -50,6 +53,21 @@ export default function ProjectList({
             Clear search
           </button>
         ) : null}
+        <div className="global-data-actions">
+          <button className="secondary-button" onClick={onExport}>
+            <span className="button-label">
+              Export All
+              <ExportIcon />
+            </span>
+          </button>
+          <label className="secondary-button file-button">
+            <span className="button-label">
+              Import JSON
+              <ImportIcon />
+            </span>
+            <input type="file" accept="application/json" onChange={onImport} />
+          </label>
+        </div>
       </div>
 
       {isSearching ? (

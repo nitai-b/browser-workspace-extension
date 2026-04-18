@@ -3,8 +3,6 @@ import {
   ArchiveIcon,
   DeleteIcon,
   EditIcon,
-  ExportIcon,
-  ImportIcon,
   PlusIcon,
   RestoreIcon,
   SaveIcon,
@@ -176,8 +174,6 @@ export default function ProjectDetails({
   onSaveCurrentWindow,
   onAddSiteUrl,
   onRestoreProject,
-  onExport,
-  onImport,
   onMoveTab,
   onOpenSavedTab,
   onRemoveTab,
@@ -345,19 +341,6 @@ export default function ProjectDetails({
             <RestoreIcon />
           </span>
         </button>
-        <button className="secondary-button" onClick={onExport}>
-          <span className="button-label">
-            JSON
-            <ExportIcon />
-          </span>
-        </button>
-        <label className="secondary-button file-button">
-          <span className="button-label">
-            JSON
-            <ImportIcon />
-          </span>
-          <input type="file" accept="application/json" onChange={onImport} />
-        </label>
       </div>
 
       <div className="add-site-section">

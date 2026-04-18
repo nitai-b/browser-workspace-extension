@@ -671,6 +671,8 @@ export default function App() {
           onClearSearch={() => setSearchQuery('')}
           onSelect={handleSelectProject}
           onCreateProject={handleCreateProject}
+          onExport={handleExport}
+          onImport={handleImport}
           onToggleArchivedView={() => setShowArchived((value) => !value)}
         />
       ) : null}
@@ -698,8 +700,6 @@ export default function App() {
             onSaveCurrentWindow={handleSaveCurrentWindow}
             onAddSiteUrl={handleAddSiteUrl}
             onRestoreProject={handleRestoreProject}
-            onExport={handleExport}
-            onImport={handleImport}
             onMoveTab={handleMoveTab}
             onOpenSavedTab={handleOpenSavedTab}
             onRemoveTab={handleRemoveTab}
