@@ -32,6 +32,7 @@ export default function ProjectList({
           ref={searchInputRef}
           className="search-input"
           type="search"
+          autoFocus
           value={searchQuery}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder="Search projects, tabs, URLs..."

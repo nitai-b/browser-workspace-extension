@@ -203,7 +203,9 @@ a {
 
 .add-site-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  box-shadow:
+    0 0 0 3px var(--accent-soft),
+    0 0 0 5px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .header-actions {
@@ -262,7 +264,9 @@ h3 {
 
 .search-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  box-shadow:
+    0 0 0 3px var(--accent-soft),
+    0 0 0 5px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .search-shortcut {

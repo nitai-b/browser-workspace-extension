@@ -229,6 +229,20 @@ export default function App() {
   }, [searchResults, selectedProject]);
 
   useEffect(() => {
+    function focusSearchInput({ select = false } = {}) {
+      const input = searchInputRef.current;
+
+      if (!input) {
+        return;
+      }
+
+      input.focus({ preventScroll: true });
+
+      if (select) {
+        input.select();
+      }
+    }
+
     function handleSearchShortcut(event) {
       const target = event.target;
       const isEditable =
@@ -238,16 +252,19 @@ export default function App() {
           target.tagName === 'TEXTAREA' ||
           target.tagName === 'SELECT');
 
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'k') {
         event.preventDefault();
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
+        focusSearchInput({ select: true });
+        return;
+      }
+
+      if (activeView !== 'projects') {
         return;
       }
 
       if (event.key === '/' && !isEditable) {
         event.preventDefault();
-        searchInputRef.current?.focus();
+        focusSearchInput();
         return;
       }
 
@@ -265,7 +282,7 @@ export default function App() {
         !isEditable
       ) {
         setSearchQuery(event.key);
-        searchInputRef.current?.focus();
+        focusSearchInput();
       }
     }
 
@@ -274,7 +291,7 @@ export default function App() {
     return () => {
       window.removeEventListener('keydown', handleSearchShortcut);
     };
-  }, []);
+  }, [activeView]);
 
   useEffect(() => {
     if (!searchResults.query || !searchResults.projects.length) {
@@ -287,6 +304,32 @@ export default function App() {
       selectProject(searchResults.projects[0].id);
     }
   }, [searchResults, state.selectedProjectId]);
+
+  useEffect(() => {
+    if (activeView !== 'projects' || loading) {
+      return;
+    }
+
+    function focusProjectSearch() {
+      const input = searchInputRef.current;
+
+      if (!input) {
+        return;
+      }
+
+      input.focus({ preventScroll: true });
+      input.select();
+    }
+
+    focusProjectSearch();
+    const focusTimeoutIds = [50, 150, 300].map((delay) =>
+      window.setTimeout(focusProjectSearch, delay),
+    );
+
+    return () => {
+      focusTimeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    };
+  }, [activeView, loading]);
 
   function showMessage(message) {
     setFeedback(message);

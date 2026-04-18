@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArchiveIcon,
   DeleteIcon,
@@ -154,6 +154,76 @@ export default function ProjectDetails({
 }) {
   const [siteUrlDraft, setSiteUrlDraft] = useState('');
   const [isAddingSite, setIsAddingSite] = useState(false);
+  const siteUrlInputRef = useRef(null);
+
+  function focusSiteUrlInput({ select = false } = {}) {
+    const input = siteUrlInputRef.current;
+
+    if (!input) {
+      return;
+    }
+
+    input.focus({ preventScroll: true });
+
+    if (select) {
+      input.select();
+    }
+  }
+
+  useEffect(() => {
+    if (!project) {
+      return;
+    }
+
+    focusSiteUrlInput({ select: true });
+    const focusTimeoutIds = [50, 150, 300].map((delay) =>
+      window.setTimeout(() => focusSiteUrlInput({ select: true }), delay),
+    );
+
+    return () => {
+      focusTimeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    };
+  }, [project?.id]);
+
+  useEffect(() => {
+    if (!project) {
+      return undefined;
+    }
+
+    function handleSiteUrlShortcut(event) {
+      const target = event.target;
+      const isEditable =
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT');
+
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        focusSiteUrlInput({ select: true });
+        return;
+      }
+
+      if (
+        event.key.length === 1 &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !isEditable
+      ) {
+        event.preventDefault();
+        setSiteUrlDraft(event.key);
+        focusSiteUrlInput();
+      }
+    }
+
+    window.addEventListener('keydown', handleSiteUrlShortcut);
+
+    return () => {
+      window.removeEventListener('keydown', handleSiteUrlShortcut);
+    };
+  }, [project]);
 
   async function handleAddSite(event) {
     event.preventDefault();
@@ -259,8 +329,10 @@ export default function ProjectDetails({
 
       <form className="add-site-form" onSubmit={handleAddSite}>
         <input
+          ref={siteUrlInputRef}
           className="add-site-input"
           type="text"
+          autoFocus
           inputMode="url"
           autoComplete="url"
           value={siteUrlDraft}

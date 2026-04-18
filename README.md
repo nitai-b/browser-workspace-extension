@@ -77,7 +77,7 @@ Whether the same shortcut also closes the side panel depends on current Brave/Ch
 
 The side panel includes global search for project names, notes, saved tab titles, and URLs.
 
-- Press `/` or `Ctrl+K` / `Command+K` to focus search.
+- Press `/` or `Ctrl+Shift+K` / `Command+Shift+K` to focus search.
 - Start typing anywhere outside an editable field to begin searching immediately.
 - Press `Escape` while search is focused to clear it.
 - Search includes archived projects so old workspaces are still discoverable.
