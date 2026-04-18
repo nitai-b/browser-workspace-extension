@@ -327,26 +327,28 @@ export default function ProjectDetails({
         </label>
       </div>
 
-      <form className="add-site-form" onSubmit={handleAddSite}>
-        <input
-          ref={siteUrlInputRef}
-          className="add-site-input"
-          type="text"
-          autoFocus
-          inputMode="url"
-          autoComplete="url"
-          value={siteUrlDraft}
-          onChange={(event) => setSiteUrlDraft(event.target.value)}
-          placeholder="example.com/docs"
-          aria-label="Site URL"
-        />
-        <button className="primary-button" type="submit" disabled={isAddingSite || !siteUrlDraft.trim()}>
-          <span className="button-label">
-            {isAddingSite ? 'Adding...' : 'Add Site'}
-            <PlusIcon />
-          </span>
-        </button>
-      </form>
+      <div className="add-site-section">
+        <form className="add-site-form" onSubmit={handleAddSite}>
+          <input
+            ref={siteUrlInputRef}
+            className="add-site-input"
+            type="text"
+            autoFocus
+            inputMode="url"
+            autoComplete="url"
+            value={siteUrlDraft}
+            onChange={(event) => setSiteUrlDraft(event.target.value)}
+            placeholder="example.com/docs"
+            aria-label="Site URL"
+          />
+          <button className="primary-button" type="submit" disabled={isAddingSite || !siteUrlDraft.trim()}>
+            <span className="button-label">
+              {isAddingSite ? 'Adding...' : 'Add Site'}
+              <PlusIcon />
+            </span>
+          </button>
+        </form>
+      </div>
 
       <div className="content-stack">
         <section className="tabs-panel">

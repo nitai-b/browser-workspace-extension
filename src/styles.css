@@ -181,13 +181,18 @@ a {
 .toolbar {
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 0;
+}
+
+.add-site-section {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+  margin: 12px 0 14px;
 }
 
 .add-site-form {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
 }
 
 .add-site-input {
@@ -448,8 +453,11 @@ h3 {
   gap: 12px;
 }
 
-.notes-panel,
 .tabs-panel {
+  padding-top: 2px;
+}
+
+.notes-panel {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
   border-radius: 16px;

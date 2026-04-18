@@ -19,7 +19,7 @@ export function normalizeAddressBarUrl(input) {
   const trimmed = typeof input === 'string' ? input.trim() : '';
 
   if (!trimmed) {
-    throw new Error('Enter a URL to add.');
+    throw new Error('Enter a URL or search to add.');
   }
 
   const withProtocol = /^[a-z][a-z\d+.-]*:/i.test(trimmed)
@@ -42,6 +42,38 @@ export function normalizeAddressBarUrl(input) {
   }
 
   return url.href;
+}
+
+function looksLikeUrlWithoutProtocol(input) {
+  const firstToken = input.split(/\s+/)[0];
+
+  return Boolean(
+    !/\s/.test(input) &&
+      (firstToken.includes('.') ||
+        firstToken.includes('/') ||
+        firstToken.startsWith('localhost') ||
+        /^\d{1,3}(\.\d{1,3}){3}(:\d+)?(\/.*)?$/.test(firstToken)),
+  );
+}
+
+export function parseAddressBarInput(input) {
+  const trimmed = typeof input === 'string' ? input.trim() : '';
+
+  if (!trimmed) {
+    throw new Error('Enter a URL or search to add.');
+  }
+
+  if (/^[a-z][a-z\d+.-]*:/i.test(trimmed) || looksLikeUrlWithoutProtocol(trimmed)) {
+    return {
+      type: 'url',
+      url: normalizeAddressBarUrl(trimmed),
+    };
+  }
+
+  return {
+    type: 'search',
+    text: trimmed,
+  };
 }
 
 export function toSavedTab(tab) {
