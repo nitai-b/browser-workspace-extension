@@ -29,7 +29,7 @@ import {
   getSaveableTabs,
   isSaveableUrl,
   isSameBrowserTab,
-  normalizeAddressBarUrl,
+  parseAddressBarInput,
   restoreProjectTabs,
   toSavedTab,
 } from '../lib/chromeTabs.js';
@@ -424,22 +424,74 @@ export default function App() {
     }
 
     try {
-      const url = normalizeAddressBarUrl(urlInput);
-      const browserTab = await chrome.tabs.create({ url, active: true });
+      const addressBarInput = parseAddressBarInput(urlInput);
+      const browserTab =
+        addressBarInput.type === 'search'
+          ? await openSearchTab(addressBarInput.text)
+          : await chrome.tabs.create({ url: addressBarInput.url, active: true });
       const savedTab = toSavedTab({
         ...browserTab,
-        title: browserTab.title || url,
-        url: browserTab.url || url,
+        title: browserTab.title || browserTab.url || urlInput.trim(),
+        url: browserTab.url,
       });
 
       await addTabsToProject(selectedProject.id, [savedTab]);
       await linkSavedTabToBrowserTab(selectedProject.id, savedTab.id, browserTab);
-      showMessage(`Added ${url} to this project.`);
+      showMessage(
+        addressBarInput.type === 'search'
+          ? `Searched for "${addressBarInput.text}" and added it to this project.`
+          : `Added ${addressBarInput.url} to this project.`,
+      );
       return true;
     } catch (error) {
       showMessage(error.message || 'Could not add that site.');
       return false;
     }
+  }
+
+  async function openSearchTab(text) {
+    if (!chrome.search?.query) {
+      throw new Error('Browser search is not available in this extension context.');
+    }
+
+    const browserTab = await chrome.tabs.create({ active: true });
+
+    if (typeof browserTab.id !== 'number') {
+      throw new Error('Could not open a search tab.');
+    }
+
+    await chrome.search.query({
+      text,
+      tabId: browserTab.id,
+    });
+
+    return waitForSaveableTabUrl(browserTab.id, browserTab);
+  }
+
+  async function waitForSaveableTabUrl(tabId, fallbackTab) {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < 3500) {
+      try {
+        const tab = await chrome.tabs.get(tabId);
+
+        if (isSaveableUrl(tab.url)) {
+          return tab;
+        }
+      } catch (error) {
+        break;
+      }
+
+      await new Promise((resolve) => window.setTimeout(resolve, 100));
+    }
+
+    const finalTab = await chrome.tabs.get(tabId);
+
+    if (!isSaveableUrl(finalTab.url)) {
+      throw new Error('Search opened, but the resulting tab could not be saved yet.');
+    }
+
+    return finalTab || fallbackTab;
   }
 
   async function handleAddNote() {

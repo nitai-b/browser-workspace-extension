@@ -4,7 +4,7 @@
   "description": "Save, organize, and restore sets of tabs as personal workspace projects.",
   "version": "0.1.0",
   "minimum_chrome_version": "114",
-  "permissions": ["storage", "tabs", "sidePanel"],
+  "permissions": ["storage", "tabs", "sidePanel", "search"],
   "background": {
     "service_worker": "background.js",
     "type": "module"

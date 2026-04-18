@@ -338,7 +338,7 @@ export default function ProjectDetails({
             autoComplete="url"
             value={siteUrlDraft}
             onChange={(event) => setSiteUrlDraft(event.target.value)}
-            placeholder="example.com/docs"
+            placeholder="Search or enter URL"
             aria-label="Site URL"
           />
           <button className="primary-button" type="submit" disabled={isAddingSite || !siteUrlDraft.trim()}>
