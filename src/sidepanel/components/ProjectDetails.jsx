@@ -87,10 +87,40 @@ function NoteCard({ note, onSave, onDelete }) {
   const hasChanges = titleDraft !== note.title || bodyDraft !== note.body;
 
   function saveNote() {
+    if (!hasChanges) {
+      return;
+    }
+
     onSave(note.id, {
       title: titleDraft,
       body: bodyDraft,
     });
+  }
+
+  function handleTitleKeyDown(event) {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      saveNote();
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      saveNote();
+    }
+  }
+
+  function handleBodyKeyDown(event) {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      saveNote();
+      return;
+    }
+
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      saveNote();
+    }
   }
 
   return (
@@ -100,6 +130,7 @@ function NoteCard({ note, onSave, onDelete }) {
           className="note-title-input"
           value={titleDraft}
           onChange={(event) => setTitleDraft(event.target.value)}
+          onKeyDown={handleTitleKeyDown}
           placeholder="Note title"
           aria-label="Note title"
         />
@@ -116,9 +147,11 @@ function NoteCard({ note, onSave, onDelete }) {
         className="notes-input"
         value={bodyDraft}
         onChange={(event) => setBodyDraft(event.target.value)}
+        onKeyDown={handleBodyKeyDown}
         placeholder="Add context, next steps, or reminders for this workspace."
       />
       <div className="note-actions">
+        <p className="note-shortcuts">Enter or Ctrl+S to save. Shift+Enter adds a line.</p>
         <button className="secondary-button" onClick={saveNote} disabled={!hasChanges}>
           <span className="button-label">
             Save Note
