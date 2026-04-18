@@ -141,6 +141,7 @@ export default function ProjectDetails({
   onDeleteNote,
   onSaveCurrentTab,
   onSaveCurrentWindow,
+  onAddSiteUrl,
   onRestoreProject,
   onExport,
   onImport,
@@ -151,6 +152,25 @@ export default function ProjectDetails({
   searchQuery,
   searchTabIds,
 }) {
+  const [siteUrlDraft, setSiteUrlDraft] = useState('');
+  const [isAddingSite, setIsAddingSite] = useState(false);
+
+  async function handleAddSite(event) {
+    event.preventDefault();
+
+    if (isAddingSite) {
+      return;
+    }
+
+    setIsAddingSite(true);
+    const didAddSite = await onAddSiteUrl(siteUrlDraft);
+    setIsAddingSite(false);
+
+    if (didAddSite) {
+      setSiteUrlDraft('');
+    }
+  }
+
   if (!project) {
     return (
       <section className="project-details empty-panel">
@@ -236,6 +256,25 @@ export default function ProjectDetails({
           <input type="file" accept="application/json" onChange={onImport} />
         </label>
       </div>
+
+      <form className="add-site-form" onSubmit={handleAddSite}>
+        <input
+          className="add-site-input"
+          type="text"
+          inputMode="url"
+          autoComplete="url"
+          value={siteUrlDraft}
+          onChange={(event) => setSiteUrlDraft(event.target.value)}
+          placeholder="example.com/docs"
+          aria-label="Site URL"
+        />
+        <button className="primary-button" type="submit" disabled={isAddingSite || !siteUrlDraft.trim()}>
+          <span className="button-label">
+            {isAddingSite ? 'Adding...' : 'Add Site'}
+            <PlusIcon />
+          </span>
+        </button>
+      </form>
 
       <div className="content-stack">
         <section className="tabs-panel">

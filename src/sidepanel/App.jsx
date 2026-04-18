@@ -29,7 +29,9 @@ import {
   getSaveableTabs,
   isSaveableUrl,
   isSameBrowserTab,
+  normalizeAddressBarUrl,
   restoreProjectTabs,
+  toSavedTab,
 } from '../lib/chromeTabs.js';
 import { downloadJson } from '../lib/utils.js';
 import { getSearchResults } from '../lib/search.js';
@@ -373,6 +375,30 @@ export default function App() {
     await saveTabsToCurrentProject(tabs);
   }
 
+  async function handleAddSiteUrl(urlInput) {
+    if (!selectedProject) {
+      return false;
+    }
+
+    try {
+      const url = normalizeAddressBarUrl(urlInput);
+      const browserTab = await chrome.tabs.create({ url, active: true });
+      const savedTab = toSavedTab({
+        ...browserTab,
+        title: browserTab.title || url,
+        url: browserTab.url || url,
+      });
+
+      await addTabsToProject(selectedProject.id, [savedTab]);
+      await linkSavedTabToBrowserTab(selectedProject.id, savedTab.id, browserTab);
+      showMessage(`Added ${url} to this project.`);
+      return true;
+    } catch (error) {
+      showMessage(error.message || 'Could not add that site.');
+      return false;
+    }
+  }
+
   async function handleAddNote() {
     if (!selectedProject) {
       return;
@@ -575,6 +601,7 @@ export default function App() {
             onDeleteNote={handleDeleteNote}
             onSaveCurrentTab={handleSaveCurrentTab}
             onSaveCurrentWindow={handleSaveCurrentWindow}
+            onAddSiteUrl={handleAddSiteUrl}
             onRestoreProject={handleRestoreProject}
             onExport={handleExport}
             onImport={handleImport}

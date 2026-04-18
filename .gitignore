@@ -23,3 +23,5 @@ Thumbs.db
 .vite
 coverage
 *playwright*
+*.png
+*.txt

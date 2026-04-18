@@ -15,6 +15,35 @@ export function isSaveableUrl(url) {
   );
 }
 
+export function normalizeAddressBarUrl(input) {
+  const trimmed = typeof input === 'string' ? input.trim() : '';
+
+  if (!trimmed) {
+    throw new Error('Enter a URL to add.');
+  }
+
+  const withProtocol = /^[a-z][a-z\d+.-]*:/i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed.replace(/^\/+/, '')}`;
+  let url;
+
+  try {
+    url = new URL(withProtocol);
+  } catch (error) {
+    throw new Error('Enter a valid web address.');
+  }
+
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error('Only http and https URLs can be added.');
+  }
+
+  if (!url.hostname) {
+    throw new Error('Enter a valid web address.');
+  }
+
+  return url.href;
+}
+
 export function toSavedTab(tab) {
   return {
     id: crypto.randomUUID(),
