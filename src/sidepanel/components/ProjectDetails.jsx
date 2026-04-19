@@ -37,17 +37,14 @@ function TabRow({
 
   return (
     <li
-      className={`saved-tab-item ${isActive ? 'is-current-tab' : ''} ${isSearchMatch ? 'is-search-match' : ''} ${
-        tab.id === draggedTabId ? 'is-dragging' : ''
-      } ${
-        dropIndicator?.targetTabId === tab.id && dropIndicator?.placement === 'before' && tab.id !== draggedTabId
+      className={`saved-tab-item ${isActive ? 'is-current-tab' : ''} ${isSearchMatch ? 'is-search-match' : ''} ${tab.id === draggedTabId ? 'is-dragging' : ''
+        } ${dropIndicator?.targetTabId === tab.id && dropIndicator?.placement === 'before' && tab.id !== draggedTabId
           ? 'is-drop-before'
           : ''
-      } ${
-        dropIndicator?.targetTabId === tab.id && dropIndicator?.placement === 'after' && tab.id !== draggedTabId
+        } ${dropIndicator?.targetTabId === tab.id && dropIndicator?.placement === 'after' && tab.id !== draggedTabId
           ? 'is-drop-after'
           : ''
-      }`}
+        }`}
       onClick={openSavedTab}
       onKeyDown={handleKeyDown}
       role="link"
@@ -399,7 +396,7 @@ export default function ProjectDetails({
         </button>
         <button className="secondary-button" onClick={onRestoreProject} disabled={!project.tabs.length}>
           <span className="button-label">
-            Project
+            Open All Tabs
             <RestoreIcon />
           </span>
         </button>
