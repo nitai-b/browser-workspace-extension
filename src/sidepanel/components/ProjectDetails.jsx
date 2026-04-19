@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ArchiveIcon,
   DeleteIcon,
+  DragHandleIcon,
   EditIcon,
   PinIcon,
   PlusIcon,
@@ -10,7 +11,19 @@ import {
 } from './Icons.jsx';
 import { getFormattedJsonSize } from '../../lib/utils.js';
 
-function TabRow({ tab, index, total, isActive, isSearchMatch, onMove, onOpen, onRemove }) {
+function TabRow({
+  tab,
+  draggedTabId,
+  dropIndicator,
+  isActive,
+  isSearchMatch,
+  onDragEnd,
+  onDragStart,
+  onDropIndicatorChange,
+  onDropTab,
+  onOpen,
+  onRemove,
+}) {
   function openSavedTab() {
     onOpen(tab);
   }
@@ -24,12 +37,43 @@ function TabRow({ tab, index, total, isActive, isSearchMatch, onMove, onOpen, on
 
   return (
     <li
-      className={`saved-tab-item ${isActive ? 'is-current-tab' : ''} ${isSearchMatch ? 'is-search-match' : ''}`}
+      className={`saved-tab-item ${isActive ? 'is-current-tab' : ''} ${isSearchMatch ? 'is-search-match' : ''} ${
+        tab.id === draggedTabId ? 'is-dragging' : ''
+      } ${
+        dropIndicator?.targetTabId === tab.id && dropIndicator?.placement === 'before' && tab.id !== draggedTabId
+          ? 'is-drop-before'
+          : ''
+      } ${
+        dropIndicator?.targetTabId === tab.id && dropIndicator?.placement === 'after' && tab.id !== draggedTabId
+          ? 'is-drop-after'
+          : ''
+      }`}
       onClick={openSavedTab}
       onKeyDown={handleKeyDown}
       role="link"
       tabIndex={0}
       title={`Open ${tab.title}`}
+      draggable
+      onDragStart={() => onDragStart(tab.id)}
+      onDragEnd={onDragEnd}
+      onDragOver={(event) => {
+        if (draggedTabId === tab.id) {
+          return;
+        }
+
+        event.preventDefault();
+        const rect = event.currentTarget.getBoundingClientRect();
+        const placement = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+
+        onDropIndicatorChange({
+          targetTabId: tab.id,
+          placement,
+        });
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        onDropTab(tab.id, dropIndicator?.placement);
+      }}
     >
       <div className="saved-tab-main">
         <div className="saved-tab-title-row">
@@ -45,22 +89,9 @@ function TabRow({ tab, index, total, isActive, isSearchMatch, onMove, onOpen, on
       </div>
 
       <div className="saved-tab-actions" onClick={(event) => event.stopPropagation()}>
-        <button
-          className="icon-button"
-          onClick={() => onMove(tab.id, 'up')}
-          disabled={index === 0}
-          title="Move up"
-        >
-          ↑
-        </button>
-        <button
-          className="icon-button"
-          onClick={() => onMove(tab.id, 'down')}
-          disabled={index === total - 1}
-          title="Move down"
-        >
-          ↓
-        </button>
+        <span className="drag-handle drag-handle-tab" aria-hidden="true" title="Drag to reorder">
+          <DragHandleIcon />
+        </span>
         <button
           className="icon-button danger icon-only-button"
           onClick={() => onRemove(tab.id)}
@@ -185,6 +216,8 @@ export default function ProjectDetails({
 }) {
   const [siteUrlDraft, setSiteUrlDraft] = useState('');
   const [isAddingSite, setIsAddingSite] = useState(false);
+  const [draggedTabId, setDraggedTabId] = useState(null);
+  const [tabDropIndicator, setTabDropIndicator] = useState(null);
   const siteUrlInputRef = useRef(null);
 
   function focusSiteUrlInput({ select = false } = {}) {
@@ -270,6 +303,25 @@ export default function ProjectDetails({
     if (didAddSite) {
       setSiteUrlDraft('');
     }
+  }
+
+  function handleTabDragStart(tabId) {
+    setDraggedTabId(tabId);
+  }
+
+  function handleTabDragEnd() {
+    setDraggedTabId(null);
+    setTabDropIndicator(null);
+  }
+
+  function handleTabDrop(targetTabId, placement) {
+    if (!draggedTabId || draggedTabId === targetTabId || !placement) {
+      handleTabDragEnd();
+      return;
+    }
+
+    onMoveTab(draggedTabId, targetTabId, placement);
+    handleTabDragEnd();
   }
 
   if (!project) {
@@ -393,11 +445,14 @@ export default function ProjectDetails({
                 <TabRow
                   key={tab.id}
                   tab={tab}
-                  index={index}
-                  total={project.tabs.length}
+                  draggedTabId={draggedTabId}
+                  dropIndicator={tabDropIndicator}
                   isActive={tab.id === activeSavedTabId}
                   isSearchMatch={searchTabIds.has(tab.id)}
-                  onMove={onMoveTab}
+                  onDragStart={handleTabDragStart}
+                  onDragEnd={handleTabDragEnd}
+                  onDropIndicatorChange={setTabDropIndicator}
+                  onDropTab={handleTabDrop}
                   onOpen={onOpenSavedTab}
                   onRemove={onRemoveTab}
                 />

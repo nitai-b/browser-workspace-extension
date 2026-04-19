@@ -351,7 +351,7 @@ export async function setProjectPinned(projectId, isPinned) {
   });
 }
 
-export async function moveProject(projectId, targetProjectId) {
+export async function moveProject(projectId, targetProjectId, placement = 'before') {
   const state = await getState();
   const sourceProject = state.projects.find((project) => project.id === projectId);
   const targetProject = state.projects.find((project) => project.id === targetProjectId);
@@ -377,7 +377,16 @@ export async function moveProject(projectId, targetProjectId) {
 
   const projects = [...state.projects];
   const [movedProject] = projects.splice(sourceIndex, 1);
-  projects.splice(targetIndex, 0, {
+  const adjustedTargetIndex = projects.findIndex((project) => project.id === targetProjectId);
+
+  if (adjustedTargetIndex === -1) {
+    throw new Error('Project not found.');
+  }
+
+  const insertionIndex =
+    placement === 'after' ? adjustedTargetIndex + 1 : adjustedTargetIndex;
+
+  projects.splice(insertionIndex, 0, {
     ...movedProject,
     updatedAt: nowIso(),
   });
@@ -408,25 +417,32 @@ export async function removeSavedTab(projectId, tabId) {
   );
 }
 
-export async function moveSavedTab(projectId, tabId, direction) {
+export async function moveSavedTab(projectId, tabId, targetTabId, placement = 'before') {
   const state = await getState();
   return saveState(
     updateProjectById(state, projectId, (project) => {
       const currentIndex = project.tabs.findIndex((tab) => tab.id === tabId);
+      const targetIndex = project.tabs.findIndex((tab) => tab.id === targetTabId);
 
-      if (currentIndex === -1) {
-        return project;
-      }
-
-      const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-
-      if (nextIndex < 0 || nextIndex >= project.tabs.length) {
+      if (currentIndex === -1 || targetIndex === -1 || currentIndex === targetIndex) {
         return project;
       }
 
       const tabs = [...project.tabs];
       const [moved] = tabs.splice(currentIndex, 1);
-      tabs.splice(nextIndex, 0, moved);
+      const adjustedTargetIndex = tabs.findIndex((tab) => tab.id === targetTabId);
+
+      if (adjustedTargetIndex === -1) {
+        return project;
+      }
+
+      const insertionIndex =
+        placement === 'after' ? adjustedTargetIndex + 1 : adjustedTargetIndex;
+
+      tabs.splice(insertionIndex, 0, {
+        ...moved,
+        updatedAt: nowIso(),
+      });
 
       return {
         ...project,

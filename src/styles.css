@@ -345,6 +345,7 @@ h3 {
 }
 
 .project-card {
+  position: relative;
   display: flex;
   align-items: stretch;
   gap: 8px;
@@ -356,9 +357,29 @@ h3 {
   opacity: 0.55;
 }
 
-.project-card.is-drop-target .project-item {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+.project-card.is-drop-before::before,
+.project-card.is-drop-after::after,
+.saved-tab-item.is-drop-before::before,
+.saved-tab-item.is-drop-after::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  pointer-events: none;
+}
+
+.project-card.is-drop-before::before,
+.saved-tab-item.is-drop-before::before {
+  top: -4px;
+}
+
+.project-card.is-drop-after::after,
+.saved-tab-item.is-drop-after::after {
+  bottom: -4px;
 }
 
 .project-item {
@@ -663,12 +684,29 @@ h3 {
   border-color: color-mix(in srgb, var(--accent) 26%, transparent);
 }
 
-.drag-hint {
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px dashed var(--border-input);
+  border-radius: 12px;
   color: var(--text-muted);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  background: color-mix(in srgb, var(--surface-button) 74%, transparent);
+  cursor: grab;
   user-select: none;
+}
+
+.drag-handle-tab {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.drag-handle .button-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .saved-tab-list {
@@ -678,6 +716,7 @@ h3 {
 }
 
 .saved-tab-item {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -691,6 +730,10 @@ h3 {
   background: var(--surface-item);
   cursor: pointer;
   transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.saved-tab-item.is-dragging {
+  opacity: 0.55;
 }
 
 .saved-tab-item:hover,
@@ -757,6 +800,7 @@ h3 {
 .saved-tab-actions {
   display: flex;
   align-self: flex-end;
+  align-items: center;
   gap: 6px;
   flex-shrink: 0;
 }
@@ -831,7 +875,7 @@ button:disabled {
 
   .saved-tab-actions {
     align-self: flex-start;
-    width: 112px;
+    width: 76px;
     justify-content: flex-end;
   }
 }

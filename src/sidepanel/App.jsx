@@ -550,8 +550,8 @@ export default function App() {
     showMessage(project.isPinned ? 'Project unpinned.' : 'Project pinned to the top section.');
   }
 
-  async function handleMoveProject(projectId, targetProjectId) {
-    await moveProject(projectId, targetProjectId);
+  async function handleMoveProject(projectId, targetProjectId, placement) {
+    await moveProject(projectId, targetProjectId, placement);
   }
 
   async function handleRemoveTab(tabId) {
@@ -563,12 +563,12 @@ export default function App() {
     showMessage('Saved tab removed.');
   }
 
-  async function handleMoveTab(tabId, direction) {
+  async function handleMoveTab(tabId, targetTabId, placement) {
     if (!selectedProject) {
       return;
     }
 
-    await moveSavedTab(selectedProject.id, tabId, direction);
+    await moveSavedTab(selectedProject.id, tabId, targetTabId, placement);
   }
 
   async function handleOpenSavedTab(tab) {

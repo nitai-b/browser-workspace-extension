@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ExportIcon, ImportIcon, PinIcon } from './Icons.jsx';
+import { DragHandleIcon, ExportIcon, ImportIcon, PinIcon } from './Icons.jsx';
 import { getFormattedJsonSize } from '../../lib/utils.js';
 
 export default function ProjectList({
@@ -22,7 +22,7 @@ export default function ProjectList({
   onToggleArchivedView,
 }) {
   const [draggedProjectId, setDraggedProjectId] = useState(null);
-  const [dropTargetProjectId, setDropTargetProjectId] = useState(null);
+  const [dropIndicator, setDropIndicator] = useState(null);
 
   const pinnedProjects = useMemo(
     () => projects.filter((project) => project.isPinned),
@@ -39,21 +39,20 @@ export default function ProjectList({
     }
 
     setDraggedProjectId(projectId);
-    setDropTargetProjectId(projectId);
   }
 
   function handleDragEnd() {
     setDraggedProjectId(null);
-    setDropTargetProjectId(null);
+    setDropIndicator(null);
   }
 
-  function handleDrop(targetProjectId) {
-    if (!draggedProjectId || draggedProjectId === targetProjectId) {
+  function handleDrop(targetProjectId, placement) {
+    if (!draggedProjectId || draggedProjectId === targetProjectId || !placement) {
       handleDragEnd();
       return;
     }
 
-    onMoveProject(draggedProjectId, targetProjectId);
+    onMoveProject(draggedProjectId, targetProjectId, placement);
     handleDragEnd();
   }
 
@@ -121,7 +120,7 @@ export default function ProjectList({
             title="Pinned"
             projects={pinnedProjects}
             draggedProjectId={draggedProjectId}
-            dropTargetProjectId={dropTargetProjectId}
+            dropIndicator={dropIndicator}
             selectedProjectId={selectedProjectId}
             activeProjectId={activeProjectId}
             isSearching={isSearching}
@@ -129,14 +128,14 @@ export default function ProjectList({
             onPinToggle={onPinToggle}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
-            onDragEnter={setDropTargetProjectId}
+            onDragIndicatorChange={setDropIndicator}
             onDrop={handleDrop}
           />
           <ProjectSection
             title={pinnedProjects.length ? 'Other projects' : 'Projects'}
             projects={otherProjects}
             draggedProjectId={draggedProjectId}
-            dropTargetProjectId={dropTargetProjectId}
+            dropIndicator={dropIndicator}
             selectedProjectId={selectedProjectId}
             activeProjectId={activeProjectId}
             isSearching={isSearching}
@@ -144,7 +143,7 @@ export default function ProjectList({
             onPinToggle={onPinToggle}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
-            onDragEnter={setDropTargetProjectId}
+            onDragIndicatorChange={setDropIndicator}
             onDrop={handleDrop}
           />
         </div>
@@ -167,7 +166,7 @@ function ProjectSection({
   title,
   projects,
   draggedProjectId,
-  dropTargetProjectId,
+  dropIndicator,
   selectedProjectId,
   activeProjectId,
   isSearching,
@@ -175,7 +174,7 @@ function ProjectSection({
   onPinToggle,
   onDragStart,
   onDragEnd,
-  onDragEnter,
+  onDragIndicatorChange,
   onDrop,
 }) {
   if (!projects.length) {
@@ -193,7 +192,17 @@ function ProjectSection({
           <article
             key={project.id}
             className={`project-card ${project.id === draggedProjectId ? 'is-dragging' : ''} ${
-              project.id === dropTargetProjectId && project.id !== draggedProjectId ? 'is-drop-target' : ''
+              dropIndicator?.targetProjectId === project.id &&
+              dropIndicator?.placement === 'before' &&
+              project.id !== draggedProjectId
+                ? 'is-drop-before'
+                : ''
+            } ${
+              dropIndicator?.targetProjectId === project.id &&
+              dropIndicator?.placement === 'after' &&
+              project.id !== draggedProjectId
+                ? 'is-drop-after'
+                : ''
             }`}
             draggable={!isSearching}
             onDragStart={() => onDragStart(project.id)}
@@ -204,15 +213,17 @@ function ProjectSection({
               }
 
               event.preventDefault();
-            }}
-            onDragEnter={() => {
-              if (draggedProjectId && draggedProjectId !== project.id) {
-                onDragEnter(project.id);
-              }
+              const rect = event.currentTarget.getBoundingClientRect();
+              const placement = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+
+              onDragIndicatorChange({
+                targetProjectId: project.id,
+                placement,
+              });
             }}
             onDrop={(event) => {
               event.preventDefault();
-              onDrop(project.id);
+              onDrop(project.id, dropIndicator?.placement);
             }}
           >
             <button
@@ -250,7 +261,11 @@ function ProjectSection({
               >
                 <PinIcon filled={project.isPinned} />
               </button>
-              {!isSearching ? <span className="drag-hint" aria-hidden="true">Drag</span> : null}
+              {!isSearching ? (
+                <span className="drag-handle" aria-hidden="true">
+                  <DragHandleIcon />
+                </span>
+              ) : null}
             </div>
           </article>
         ))}

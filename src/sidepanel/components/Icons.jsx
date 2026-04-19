@@ -83,6 +83,16 @@ export function ArchiveIcon() {
   );
 }
 
+export function DragHandleIcon() {
+  return (
+    <BaseIcon>
+      <path d="M7 8.25h10" />
+      <path d="M7 12h10" />
+      <path d="M7 15.75h10" />
+    </BaseIcon>
+  );
+}
+
 export function PinIcon({ filled = false }) {
   return (
     <svg
