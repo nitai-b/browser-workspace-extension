@@ -17,6 +17,7 @@ function TabRow({
   dropIndicator,
   isActive,
   isSearchMatch,
+  registerTabElement,
   onDragEnd,
   onDragStart,
   onDropIndicatorChange,
@@ -37,6 +38,7 @@ function TabRow({
 
   return (
     <li
+      ref={(element) => registerTabElement(tab.id, element)}
       className={`saved-tab-item ${isActive ? 'is-current-tab' : ''} ${isSearchMatch ? 'is-search-match' : ''} ${tab.id === draggedTabId ? 'is-dragging' : ''
         } ${dropIndicator?.targetTabId === tab.id && dropIndicator?.placement === 'before' && tab.id !== draggedTabId
           ? 'is-drop-before'
@@ -215,6 +217,7 @@ export default function ProjectDetails({
   const [isAddingSite, setIsAddingSite] = useState(false);
   const [draggedTabId, setDraggedTabId] = useState(null);
   const [tabDropIndicator, setTabDropIndicator] = useState(null);
+  const tabElementsRef = useRef(new Map());
   const siteUrlInputRef = useRef(null);
 
   function focusSiteUrlInput({ select = false } = {}) {
@@ -320,6 +323,29 @@ export default function ProjectDetails({
     onMoveTab(draggedTabId, targetTabId, placement);
     handleTabDragEnd();
   }
+
+  function registerTabElement(tabId, element) {
+    if (element) {
+      tabElementsRef.current.set(tabId, element);
+      return;
+    }
+
+    tabElementsRef.current.delete(tabId);
+  }
+
+  useEffect(() => {
+    if (!activeSavedTabId) {
+      return;
+    }
+
+    const activeTabElement = tabElementsRef.current.get(activeSavedTabId);
+
+    activeTabElement?.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: 'smooth',
+    });
+  }, [activeSavedTabId, project?.tabs]);
 
   if (!project) {
     return (
@@ -438,7 +464,7 @@ export default function ProjectDetails({
 
           {project.tabs.length ? (
             <ul className="saved-tab-list">
-              {project.tabs.map((tab, index) => (
+              {project.tabs.map((tab) => (
                 <TabRow
                   key={tab.id}
                   tab={tab}
@@ -446,6 +472,7 @@ export default function ProjectDetails({
                   dropIndicator={tabDropIndicator}
                   isActive={tab.id === activeSavedTabId}
                   isSearchMatch={searchTabIds.has(tab.id)}
+                  registerTabElement={registerTabElement}
                   onDragStart={handleTabDragStart}
                   onDragEnd={handleTabDragEnd}
                   onDropIndicatorChange={setTabDropIndicator}

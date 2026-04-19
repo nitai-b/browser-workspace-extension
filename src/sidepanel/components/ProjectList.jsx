@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DragHandleIcon, ExportIcon, ImportIcon, PinIcon } from './Icons.jsx';
 import { getFormattedJsonSize } from '../../lib/utils.js';
 
@@ -23,6 +23,7 @@ export default function ProjectList({
 }) {
   const [draggedProjectId, setDraggedProjectId] = useState(null);
   const [dropIndicator, setDropIndicator] = useState(null);
+  const projectElementsRef = useRef(new Map());
 
   const pinnedProjects = useMemo(
     () => projects.filter((project) => project.isPinned),
@@ -55,6 +56,20 @@ export default function ProjectList({
     onMoveProject(draggedProjectId, targetProjectId, placement);
     handleDragEnd();
   }
+
+  useEffect(() => {
+    if (!activeProjectId) {
+      return;
+    }
+
+    const activeProjectElement = projectElementsRef.current.get(activeProjectId);
+
+    activeProjectElement?.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: 'smooth',
+    });
+  }, [activeProjectId, projects]);
 
   return (
     <aside className="project-list">
@@ -227,6 +242,14 @@ function ProjectSection({
             }}
           >
             <button
+              ref={(element) => {
+                if (element) {
+                  projectElementsRef.current.set(project.id, element);
+                  return;
+                }
+
+                projectElementsRef.current.delete(project.id);
+              }}
               className={`project-item ${project.id === selectedProjectId ? 'is-active' : ''} ${
                 project.id === activeProjectId ? 'has-current-tab' : ''
               }`}

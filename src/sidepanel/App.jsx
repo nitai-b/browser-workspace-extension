@@ -732,6 +732,30 @@ export default function App() {
 }
 
 function OpenTabsView({ tabs, activeBrowserTab, onFocusTab }) {
+  const openTabElementsRef = useRef(new Map());
+
+  useEffect(() => {
+    if (!activeBrowserTab) {
+      return;
+    }
+
+    const activeOpenTab = tabs.find((tab) => isSameOpenTab(tab, activeBrowserTab));
+
+    if (!activeOpenTab) {
+      return;
+    }
+
+    const activeOpenTabElement = openTabElementsRef.current.get(
+      `${activeOpenTab.windowId}-${activeOpenTab.id}`,
+    );
+
+    activeOpenTabElement?.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: 'smooth',
+    });
+  }, [activeBrowserTab, tabs]);
+
   return (
     <section className="open-tabs-view">
       <div className="panel-header">
@@ -749,6 +773,16 @@ function OpenTabsView({ tabs, activeBrowserTab, onFocusTab }) {
           {tabs.map((tab) => (
             <li
               key={`${tab.windowId}-${tab.id}`}
+              ref={(element) => {
+                const tabKey = `${tab.windowId}-${tab.id}`;
+
+                if (element) {
+                  openTabElementsRef.current.set(tabKey, element);
+                  return;
+                }
+
+                openTabElementsRef.current.delete(tabKey);
+              }}
               className={`saved-tab-item ${isSameOpenTab(tab, activeBrowserTab) ? 'is-current-tab' : ''}`}
               onClick={() => onFocusTab(tab)}
               role="link"
