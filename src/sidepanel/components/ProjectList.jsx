@@ -1,4 +1,5 @@
-import { ExportIcon, ImportIcon } from './Icons.jsx';
+import { useMemo, useState } from 'react';
+import { ExportIcon, ImportIcon, PinIcon } from './Icons.jsx';
 import { getFormattedJsonSize } from '../../lib/utils.js';
 
 export default function ProjectList({
@@ -16,8 +17,46 @@ export default function ProjectList({
   onCreateProject,
   onExport,
   onImport,
+  onPinToggle,
+  onMoveProject,
   onToggleArchivedView,
 }) {
+  const [draggedProjectId, setDraggedProjectId] = useState(null);
+  const [dropTargetProjectId, setDropTargetProjectId] = useState(null);
+
+  const pinnedProjects = useMemo(
+    () => projects.filter((project) => project.isPinned),
+    [projects],
+  );
+  const otherProjects = useMemo(
+    () => projects.filter((project) => !project.isPinned),
+    [projects],
+  );
+
+  function handleDragStart(projectId) {
+    if (isSearching) {
+      return;
+    }
+
+    setDraggedProjectId(projectId);
+    setDropTargetProjectId(projectId);
+  }
+
+  function handleDragEnd() {
+    setDraggedProjectId(null);
+    setDropTargetProjectId(null);
+  }
+
+  function handleDrop(targetProjectId) {
+    if (!draggedProjectId || draggedProjectId === targetProjectId) {
+      handleDragEnd();
+      return;
+    }
+
+    onMoveProject(draggedProjectId, targetProjectId);
+    handleDragEnd();
+  }
+
   return (
     <aside className="project-list">
       <div className="panel-header">
@@ -77,33 +116,37 @@ export default function ProjectList({
       ) : null}
 
       {projects.length ? (
-        <div className="project-items">
-          {projects.map((project) => (
-            <button
-              key={project.id}
-              className={`project-item ${project.id === selectedProjectId ? 'is-active' : ''} ${
-                project.id === activeProjectId ? 'has-current-tab' : ''
-              }`}
-              onClick={() => onSelect(project.id)}
-            >
-              <span className="project-title-row">
-                <span className="project-name">{project.name}</span>
-                {project.id === activeProjectId ? (
-                  <span className="current-project-pill">Current tab</span>
-                ) : null}
-              </span>
-              <span className="project-meta">
-                {project.tabs.length} saved {project.tabs.length === 1 ? 'tab' : 'tabs'}
-                <span aria-hidden="true"> · </span>
-                {getFormattedJsonSize(project)}
-              </span>
-              {project.searchMatches?.length ? (
-                <span className="project-search-meta">
-                  Matched {project.searchMatches.join(', ')}
-                </span>
-              ) : null}
-            </button>
-          ))}
+        <div className="project-list-sections">
+          <ProjectSection
+            title="Pinned"
+            projects={pinnedProjects}
+            draggedProjectId={draggedProjectId}
+            dropTargetProjectId={dropTargetProjectId}
+            selectedProjectId={selectedProjectId}
+            activeProjectId={activeProjectId}
+            isSearching={isSearching}
+            onSelect={onSelect}
+            onPinToggle={onPinToggle}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragEnter={setDropTargetProjectId}
+            onDrop={handleDrop}
+          />
+          <ProjectSection
+            title={pinnedProjects.length ? 'Other projects' : 'Projects'}
+            projects={otherProjects}
+            draggedProjectId={draggedProjectId}
+            dropTargetProjectId={dropTargetProjectId}
+            selectedProjectId={selectedProjectId}
+            activeProjectId={activeProjectId}
+            isSearching={isSearching}
+            onSelect={onSelect}
+            onPinToggle={onPinToggle}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragEnter={setDropTargetProjectId}
+            onDrop={handleDrop}
+          />
         </div>
       ) : (
         <div className="empty-state compact">
@@ -117,5 +160,101 @@ export default function ProjectList({
         </div>
       )}
     </aside>
+  );
+}
+
+function ProjectSection({
+  title,
+  projects,
+  draggedProjectId,
+  dropTargetProjectId,
+  selectedProjectId,
+  activeProjectId,
+  isSearching,
+  onSelect,
+  onPinToggle,
+  onDragStart,
+  onDragEnd,
+  onDragEnter,
+  onDrop,
+}) {
+  if (!projects.length) {
+    return null;
+  }
+
+  return (
+    <section className="project-section">
+      <div className="project-section-header">
+        <h2 className="project-section-title">{title}</h2>
+        {!isSearching ? <span className="count-pill">{projects.length}</span> : null}
+      </div>
+      <div className="project-items">
+        {projects.map((project) => (
+          <article
+            key={project.id}
+            className={`project-card ${project.id === draggedProjectId ? 'is-dragging' : ''} ${
+              project.id === dropTargetProjectId && project.id !== draggedProjectId ? 'is-drop-target' : ''
+            }`}
+            draggable={!isSearching}
+            onDragStart={() => onDragStart(project.id)}
+            onDragEnd={onDragEnd}
+            onDragOver={(event) => {
+              if (draggedProjectId === project.id) {
+                return;
+              }
+
+              event.preventDefault();
+            }}
+            onDragEnter={() => {
+              if (draggedProjectId && draggedProjectId !== project.id) {
+                onDragEnter(project.id);
+              }
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              onDrop(project.id);
+            }}
+          >
+            <button
+              className={`project-item ${project.id === selectedProjectId ? 'is-active' : ''} ${
+                project.id === activeProjectId ? 'has-current-tab' : ''
+              }`}
+              onClick={() => onSelect(project.id)}
+            >
+              <span className="project-title-row">
+                <span className="project-name">{project.name}</span>
+                <span className="project-badges">
+                  {project.isPinned ? <span className="pin-pill">Pinned</span> : null}
+                  {project.id === activeProjectId ? (
+                    <span className="current-project-pill">Current tab</span>
+                  ) : null}
+                </span>
+              </span>
+              <span className="project-meta">
+                {project.tabs.length} saved {project.tabs.length === 1 ? 'tab' : 'tabs'}
+                <span aria-hidden="true"> · </span>
+                {getFormattedJsonSize(project)}
+              </span>
+              {project.searchMatches?.length ? (
+                <span className="project-search-meta">
+                  Matched {project.searchMatches.join(', ')}
+                </span>
+              ) : null}
+            </button>
+            <div className="project-item-actions">
+              <button
+                className={`icon-button icon-only-button ${project.isPinned ? 'is-toggled' : ''}`}
+                onClick={() => onPinToggle(project)}
+                title={project.isPinned ? 'Unpin project' : 'Pin project'}
+                aria-label={project.isPinned ? 'Unpin project' : 'Pin project'}
+              >
+                <PinIcon filled={project.isPinned} />
+              </button>
+              {!isSearching ? <span className="drag-hint" aria-hidden="true">Drag</span> : null}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }

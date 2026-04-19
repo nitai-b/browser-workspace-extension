@@ -252,6 +252,32 @@ h3 {
   gap: 8px;
 }
 
+.project-list-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.project-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.project-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.project-section-title {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .search-box {
   position: relative;
   margin-bottom: 8px;
@@ -318,7 +344,25 @@ h3 {
   overflow: auto;
 }
 
+.project-card {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  border-radius: 14px;
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+
+.project-card.is-dragging {
+  opacity: 0.55;
+}
+
+.project-card.is-drop-target .project-item {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
 .project-item {
+  flex: 1;
   width: 100%;
   min-width: 0;
   text-align: left;
@@ -355,6 +399,14 @@ h3 {
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
+}
+
+.project-badges {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .project-name {
@@ -574,9 +626,49 @@ h3 {
   letter-spacing: 0.04em;
 }
 
+.pin-pill {
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-soft) 86%, white);
+  color: var(--accent-soft-foreground);
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .project-item.is-active .current-project-pill {
   background: color-mix(in srgb, var(--accent-foreground) 18%, transparent);
   color: var(--accent-foreground);
+}
+
+.project-item.is-active .pin-pill {
+  background: color-mix(in srgb, var(--accent-foreground) 18%, transparent);
+  color: var(--accent-foreground);
+}
+
+.project-item-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.icon-button.is-toggled,
+.secondary-button.is-toggled {
+  background: var(--accent-soft);
+  color: var(--accent-soft-foreground);
+  border-color: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.drag-hint {
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  user-select: none;
 }
 
 .saved-tab-list {

@@ -3,6 +3,7 @@ import {
   ArchiveIcon,
   DeleteIcon,
   EditIcon,
+  PinIcon,
   PlusIcon,
   RestoreIcon,
   SaveIcon,
@@ -165,6 +166,7 @@ export default function ProjectDetails({
   project,
   onBack,
   onRename,
+  onPinToggle,
   onDelete,
   onArchiveToggle,
   onAddNote,
@@ -295,6 +297,14 @@ export default function ProjectDetails({
           </p>
         </div>
         <div className="header-actions">
+          <button
+            className={`secondary-button icon-only-button ${project.isPinned ? 'is-toggled' : ''}`}
+            onClick={onPinToggle}
+            title={project.isPinned ? 'Unpin project' : 'Pin project'}
+            aria-label={project.isPinned ? 'Unpin project' : 'Pin project'}
+          >
+            <PinIcon filled={project.isPinned} />
+          </button>
           <button
             className="secondary-button icon-only-button"
             onClick={onRename}

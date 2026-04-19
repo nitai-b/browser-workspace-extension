@@ -12,12 +12,14 @@ import {
   importProjects,
   linkSavedTabToBrowserTab,
   linkRestoredTabsToProject,
+  moveProject,
   moveSavedTab,
   normalizeState,
   removeSavedTab,
   renameProject,
   selectProject,
   setProjectArchived,
+  setProjectPinned,
   updateProjectNote,
 } from '../lib/storage.js';
 import {
@@ -539,6 +541,19 @@ export default function App() {
     showMessage(selectedProject.isArchived ? 'Project restored to active.' : 'Project archived.');
   }
 
+  async function handlePinToggle(project = selectedProject) {
+    if (!project) {
+      return;
+    }
+
+    await setProjectPinned(project.id, !project.isPinned);
+    showMessage(project.isPinned ? 'Project unpinned.' : 'Project pinned to the top section.');
+  }
+
+  async function handleMoveProject(projectId, targetProjectId) {
+    await moveProject(projectId, targetProjectId);
+  }
+
   async function handleRemoveTab(tabId) {
     if (!selectedProject) {
       return;
@@ -673,6 +688,8 @@ export default function App() {
           onCreateProject={handleCreateProject}
           onExport={handleExport}
           onImport={handleImport}
+          onPinToggle={handlePinToggle}
+          onMoveProject={handleMoveProject}
           onToggleArchivedView={() => setShowArchived((value) => !value)}
         />
       ) : null}
@@ -691,6 +708,7 @@ export default function App() {
             project={selectedProject}
             onBack={handleBackToProjects}
             onRename={handleRenameProject}
+            onPinToggle={() => handlePinToggle(selectedProject)}
             onDelete={handleDeleteProject}
             onArchiveToggle={handleArchiveToggle}
             onAddNote={handleAddNote}

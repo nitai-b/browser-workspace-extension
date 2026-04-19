@@ -59,6 +59,7 @@ function normalizeProject(project) {
         ? project.name.trim()
         : DEFAULT_PROJECT_NAME,
     notes: normalizeProjectNotes(project),
+    isPinned: Boolean(project.isPinned),
     isArchived: Boolean(project.isArchived),
     createdAt: typeof project.createdAt === 'string' ? project.createdAt : nowIso(),
     updatedAt: typeof project.updatedAt === 'string' ? project.updatedAt : nowIso(),
@@ -112,6 +113,7 @@ function mergeProject(existingProject, incomingProject) {
     project: changed
       ? {
           ...existingProject,
+          isPinned: existingProject.isPinned || incomingProject.isPinned,
           isArchived: existingProject.isArchived && incomingProject.isArchived,
           updatedAt: nowIso(),
           tabs: tabMerge.items,
@@ -141,7 +143,7 @@ export function normalizeState(value) {
       : projects[0]?.id || null;
 
   return {
-    version: 1,
+    version: 2,
     selectedProjectId,
     projects,
   };
@@ -311,6 +313,79 @@ export async function setProjectArchived(projectId, isArchived) {
       isArchived,
     })),
   );
+}
+
+export async function setProjectPinned(projectId, isPinned) {
+  const state = await getState();
+  const currentIndex = state.projects.findIndex((project) => project.id === projectId);
+
+  if (currentIndex === -1) {
+    throw new Error('Project not found.');
+  }
+
+  const projects = [...state.projects];
+  const [project] = projects.splice(currentIndex, 1);
+  const updatedProject = {
+    ...project,
+    isPinned,
+    updatedAt: nowIso(),
+  };
+
+  if (isPinned) {
+    const targetIndex = projects.findIndex(
+      (entry) => entry.isArchived === project.isArchived && entry.isPinned,
+    );
+
+    projects.splice(targetIndex === -1 ? 0 : targetIndex, 0, updatedProject);
+  } else {
+    const targetIndex = projects.findIndex(
+      (entry) => entry.isArchived === project.isArchived && !entry.isPinned,
+    );
+
+    projects.splice(targetIndex === -1 ? projects.length : targetIndex, 0, updatedProject);
+  }
+
+  return saveState({
+    ...state,
+    projects,
+  });
+}
+
+export async function moveProject(projectId, targetProjectId) {
+  const state = await getState();
+  const sourceProject = state.projects.find((project) => project.id === projectId);
+  const targetProject = state.projects.find((project) => project.id === targetProjectId);
+
+  if (!sourceProject || !targetProject) {
+    throw new Error('Project not found.');
+  }
+
+  if (
+    sourceProject.id === targetProject.id ||
+    sourceProject.isPinned !== targetProject.isPinned ||
+    sourceProject.isArchived !== targetProject.isArchived
+  ) {
+    return state;
+  }
+
+  const sourceIndex = state.projects.findIndex((project) => project.id === projectId);
+  const targetIndex = state.projects.findIndex((project) => project.id === targetProjectId);
+
+  if (sourceIndex === -1 || targetIndex === -1) {
+    throw new Error('Project not found.');
+  }
+
+  const projects = [...state.projects];
+  const [movedProject] = projects.splice(sourceIndex, 1);
+  projects.splice(targetIndex, 0, {
+    ...movedProject,
+    updatedAt: nowIso(),
+  });
+
+  return saveState({
+    ...state,
+    projects,
+  });
 }
 
 export async function addTabsToProject(projectId, tabs) {
