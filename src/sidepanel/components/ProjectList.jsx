@@ -134,6 +134,7 @@ export default function ProjectList({
           <ProjectSection
             title="Pinned"
             projects={pinnedProjects}
+            projectElementsRef={projectElementsRef}
             draggedProjectId={draggedProjectId}
             dropIndicator={dropIndicator}
             selectedProjectId={selectedProjectId}
@@ -149,6 +150,7 @@ export default function ProjectList({
           <ProjectSection
             title={pinnedProjects.length ? 'Other projects' : 'Projects'}
             projects={otherProjects}
+            projectElementsRef={projectElementsRef}
             draggedProjectId={draggedProjectId}
             dropIndicator={dropIndicator}
             selectedProjectId={selectedProjectId}
@@ -180,6 +182,7 @@ export default function ProjectList({
 function ProjectSection({
   title,
   projects,
+  projectElementsRef,
   draggedProjectId,
   dropIndicator,
   selectedProjectId,
