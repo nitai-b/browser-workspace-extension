@@ -342,6 +342,7 @@ h3 {
 .project-items {
   max-height: none;
   overflow: auto;
+  padding-top: 6px;
 }
 
 .project-card {

@@ -338,13 +338,33 @@ export default function ProjectDetails({
       return;
     }
 
-    const activeTabElement = tabElementsRef.current.get(activeSavedTabId);
+    function scrollToActiveSavedTab() {
+      const activeTabElement = tabElementsRef.current.get(activeSavedTabId);
 
-    activeTabElement?.scrollIntoView({
-      block: 'nearest',
-      inline: 'nearest',
-      behavior: 'smooth',
-    });
+      activeTabElement?.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+        behavior: 'smooth',
+      });
+    }
+
+    scrollToActiveSavedTab();
+    const timeoutIds = [60, 180, 320].map((delay) =>
+      window.setTimeout(scrollToActiveSavedTab, delay),
+    );
+
+    function handleVisibilityOrFocus() {
+      scrollToActiveSavedTab();
+    }
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    return () => {
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+    };
   }, [activeSavedTabId, project?.tabs]);
 
   if (!project) {

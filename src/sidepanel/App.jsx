@@ -739,21 +739,41 @@ function OpenTabsView({ tabs, activeBrowserTab, onFocusTab }) {
       return;
     }
 
-    const activeOpenTab = tabs.find((tab) => isSameOpenTab(tab, activeBrowserTab));
+    function scrollToActiveOpenTab() {
+      const activeOpenTab = tabs.find((tab) => isSameOpenTab(tab, activeBrowserTab));
 
-    if (!activeOpenTab) {
-      return;
+      if (!activeOpenTab) {
+        return;
+      }
+
+      const activeOpenTabElement = openTabElementsRef.current.get(
+        `${activeOpenTab.windowId}-${activeOpenTab.id}`,
+      );
+
+      activeOpenTabElement?.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+        behavior: 'smooth',
+      });
     }
 
-    const activeOpenTabElement = openTabElementsRef.current.get(
-      `${activeOpenTab.windowId}-${activeOpenTab.id}`,
+    scrollToActiveOpenTab();
+    const timeoutIds = [60, 180, 320].map((delay) =>
+      window.setTimeout(scrollToActiveOpenTab, delay),
     );
 
-    activeOpenTabElement?.scrollIntoView({
-      block: 'nearest',
-      inline: 'nearest',
-      behavior: 'smooth',
-    });
+    function handleVisibilityOrFocus() {
+      scrollToActiveOpenTab();
+    }
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    return () => {
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+    };
   }, [activeBrowserTab, tabs]);
 
   return (

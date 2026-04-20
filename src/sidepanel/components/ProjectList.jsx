@@ -62,13 +62,33 @@ export default function ProjectList({
       return;
     }
 
-    const activeProjectElement = projectElementsRef.current.get(activeProjectId);
+    function scrollToActiveProject() {
+      const activeProjectElement = projectElementsRef.current.get(activeProjectId);
 
-    activeProjectElement?.scrollIntoView({
-      block: 'nearest',
-      inline: 'nearest',
-      behavior: 'smooth',
-    });
+      activeProjectElement?.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+        behavior: 'smooth',
+      });
+    }
+
+    scrollToActiveProject();
+    const timeoutIds = [60, 180, 320].map((delay) =>
+      window.setTimeout(scrollToActiveProject, delay),
+    );
+
+    function handleVisibilityOrFocus() {
+      scrollToActiveProject();
+    }
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    return () => {
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+    };
   }, [activeProjectId, projects]);
 
   return (
@@ -209,19 +229,17 @@ function ProjectSection({
         {projects.map((project) => (
           <article
             key={project.id}
-            className={`project-card ${project.id === draggedProjectId ? 'is-dragging' : ''} ${
-              dropIndicator?.targetProjectId === project.id &&
+            className={`project-card ${project.id === draggedProjectId ? 'is-dragging' : ''} ${dropIndicator?.targetProjectId === project.id &&
               dropIndicator?.placement === 'before' &&
               project.id !== draggedProjectId
-                ? 'is-drop-before'
-                : ''
-            } ${
-              dropIndicator?.targetProjectId === project.id &&
-              dropIndicator?.placement === 'after' &&
-              project.id !== draggedProjectId
+              ? 'is-drop-before'
+              : ''
+              } ${dropIndicator?.targetProjectId === project.id &&
+                dropIndicator?.placement === 'after' &&
+                project.id !== draggedProjectId
                 ? 'is-drop-after'
                 : ''
-            }`}
+              }`}
             draggable={!isSearching}
             onDragStart={() => onDragStart(project.id)}
             onDragEnd={onDragEnd}
@@ -253,9 +271,8 @@ function ProjectSection({
 
                 projectElementsRef.current.delete(project.id);
               }}
-              className={`project-item ${project.id === selectedProjectId ? 'is-active' : ''} ${
-                project.id === activeProjectId ? 'has-current-tab' : ''
-              }`}
+              className={`project-item ${project.id === selectedProjectId ? 'is-active' : ''} ${project.id === activeProjectId ? 'has-current-tab' : ''
+                }`}
               onClick={() => onSelect(project.id)}
             >
               <span className="project-title-row">
