@@ -1,8 +1,19 @@
 import { DEFAULT_PROJECT_NAME, DEFAULT_STATE, STORAGE_KEY } from './constants.js';
 import { createId, nowIso } from './utils.js';
 
+let stateWriteChain = Promise.resolve();
+
 function cloneDefaultState() {
   return structuredClone(DEFAULT_STATE);
+}
+
+function queueStateWrite(task) {
+  const runTask = stateWriteChain.then(task, task);
+  stateWriteChain = runTask.then(
+    () => undefined,
+    () => undefined,
+  );
+  return runTask;
 }
 
 function normalizeSavedTab(tab) {
@@ -149,21 +160,43 @@ export function normalizeState(value) {
   };
 }
 
-export async function getState() {
+async function readStoredState() {
   const result = await chrome.storage.local.get(STORAGE_KEY);
-  const state = normalizeState(result[STORAGE_KEY]);
-
-  if (!result[STORAGE_KEY]) {
-    await chrome.storage.local.set({ [STORAGE_KEY]: state });
-  }
-
-  return state;
+  return {
+    hasStoredState: Object.prototype.hasOwnProperty.call(result, STORAGE_KEY),
+    state: normalizeState(result[STORAGE_KEY]),
+  };
 }
 
-export async function saveState(state) {
+async function writeNormalizedState(state) {
   const normalized = normalizeState(state);
   await chrome.storage.local.set({ [STORAGE_KEY]: normalized });
   return normalized;
+}
+
+export async function getState() {
+  return queueStateWrite(async () => {
+    const { hasStoredState, state } = await readStoredState();
+
+    if (!hasStoredState) {
+      return writeNormalizedState(state);
+    }
+
+    return state;
+  });
+}
+
+export async function saveState(state) {
+  return queueStateWrite(() => writeNormalizedState(state));
+}
+
+export async function updateState(updater) {
+  return queueStateWrite(async () => {
+    const { hasStoredState, state } = await readStoredState();
+    const currentState = hasStoredState ? state : await writeNormalizedState(state);
+    const nextState = await updater(currentState);
+    return writeNormalizedState(nextState);
+  });
 }
 
 function updateProjectById(state, projectId, updater) {
@@ -193,27 +226,27 @@ function updateProjectById(state, projectId, updater) {
 }
 
 export async function createProject(name = '') {
-  const state = await getState();
-  const project = normalizeProject({
-    id: createId(),
-    name: name.trim() || `Project ${state.projects.length + 1}`,
-    notes: '',
-    isArchived: false,
-    tabs: [],
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
-  });
+  return updateState((state) => {
+    const project = normalizeProject({
+      id: createId(),
+      name: name.trim() || `Project ${state.projects.length + 1}`,
+      notes: '',
+      isArchived: false,
+      tabs: [],
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    });
 
-  return saveState({
-    ...state,
-    selectedProjectId: project.id,
-    projects: [...state.projects, project],
+    return {
+      ...state,
+      selectedProjectId: project.id,
+      projects: [...state.projects, project],
+    };
   });
 }
 
 export async function renameProject(projectId, name) {
-  const state = await getState();
-  return saveState(
+  return updateState((state) =>
     updateProjectById(state, projectId, (project) => ({
       ...project,
       name: name.trim() || DEFAULT_PROJECT_NAME,
@@ -222,29 +255,28 @@ export async function renameProject(projectId, name) {
 }
 
 export async function deleteProject(projectId) {
-  const state = await getState();
-  const projects = state.projects.filter((project) => project.id !== projectId);
-  const selectedProjectId =
-    state.selectedProjectId === projectId ? projects[0]?.id || null : state.selectedProjectId;
+  return updateState((state) => {
+    const projects = state.projects.filter((project) => project.id !== projectId);
+    const selectedProjectId =
+      state.selectedProjectId === projectId ? projects[0]?.id || null : state.selectedProjectId;
 
-  return saveState({
-    ...state,
-    selectedProjectId,
-    projects,
+    return {
+      ...state,
+      selectedProjectId,
+      projects,
+    };
   });
 }
 
 export async function selectProject(projectId) {
-  const state = await getState();
-  return saveState({
+  return updateState((state) => ({
     ...state,
     selectedProjectId: projectId,
-  });
+  }));
 }
 
 export async function updateProjectNotes(projectId, notes) {
-  const state = await getState();
-  return saveState(
+  return updateState((state) =>
     updateProjectById(state, projectId, (project) => ({
       ...project,
       notes: Array.isArray(notes) ? notes.map(normalizeProjectNote) : normalizeProjectNotes({ notes }),
@@ -253,10 +285,9 @@ export async function updateProjectNotes(projectId, notes) {
 }
 
 export async function addProjectNote(projectId, note) {
-  const state = await getState();
   const createdAt = nowIso();
 
-  return saveState(
+  return updateState((state) =>
     updateProjectById(state, projectId, (project) => ({
       ...project,
       notes: [
@@ -272,9 +303,7 @@ export async function addProjectNote(projectId, note) {
 }
 
 export async function updateProjectNote(projectId, noteId, updates) {
-  const state = await getState();
-
-  return saveState(
+  return updateState((state) =>
     updateProjectById(state, projectId, (project) => ({
       ...project,
       notes: project.notes.map((note) => {
@@ -295,9 +324,7 @@ export async function updateProjectNote(projectId, noteId, updates) {
 }
 
 export async function deleteProjectNote(projectId, noteId) {
-  const state = await getState();
-
-  return saveState(
+  return updateState((state) =>
     updateProjectById(state, projectId, (project) => ({
       ...project,
       notes: project.notes.filter((note) => note.id !== noteId),
@@ -306,8 +333,7 @@ export async function deleteProjectNote(projectId, noteId) {
 }
 
 export async function setProjectArchived(projectId, isArchived) {
-  const state = await getState();
-  return saveState(
+  return updateState((state) =>
     updateProjectById(state, projectId, (project) => ({
       ...project,
       isArchived,
@@ -316,90 +342,91 @@ export async function setProjectArchived(projectId, isArchived) {
 }
 
 export async function setProjectPinned(projectId, isPinned) {
-  const state = await getState();
-  const currentIndex = state.projects.findIndex((project) => project.id === projectId);
+  return updateState((state) => {
+    const currentIndex = state.projects.findIndex((project) => project.id === projectId);
 
-  if (currentIndex === -1) {
-    throw new Error('Project not found.');
-  }
+    if (currentIndex === -1) {
+      throw new Error('Project not found.');
+    }
 
-  const projects = [...state.projects];
-  const [project] = projects.splice(currentIndex, 1);
-  const updatedProject = {
-    ...project,
-    isPinned,
-    updatedAt: nowIso(),
-  };
+    const projects = [...state.projects];
+    const [project] = projects.splice(currentIndex, 1);
+    const updatedProject = {
+      ...project,
+      isPinned,
+      updatedAt: nowIso(),
+    };
 
-  if (isPinned) {
-    const targetIndex = projects.findIndex(
-      (entry) => entry.isArchived === project.isArchived && entry.isPinned,
-    );
+    if (isPinned) {
+      const targetIndex = projects.findIndex(
+        (entry) => entry.isArchived === project.isArchived && entry.isPinned,
+      );
 
-    projects.splice(targetIndex === -1 ? 0 : targetIndex, 0, updatedProject);
-  } else {
-    const targetIndex = projects.findIndex(
-      (entry) => entry.isArchived === project.isArchived && !entry.isPinned,
-    );
+      projects.splice(targetIndex === -1 ? 0 : targetIndex, 0, updatedProject);
+    } else {
+      const targetIndex = projects.findIndex(
+        (entry) => entry.isArchived === project.isArchived && !entry.isPinned,
+      );
 
-    projects.splice(targetIndex === -1 ? projects.length : targetIndex, 0, updatedProject);
-  }
+      projects.splice(targetIndex === -1 ? projects.length : targetIndex, 0, updatedProject);
+    }
 
-  return saveState({
-    ...state,
-    projects,
+    return {
+      ...state,
+      projects,
+    };
   });
 }
 
 export async function moveProject(projectId, targetProjectId, placement = 'before') {
-  const state = await getState();
-  const sourceProject = state.projects.find((project) => project.id === projectId);
-  const targetProject = state.projects.find((project) => project.id === targetProjectId);
+  return updateState((state) => {
+    const sourceProject = state.projects.find((project) => project.id === projectId);
+    const targetProject = state.projects.find((project) => project.id === targetProjectId);
 
-  if (!sourceProject || !targetProject) {
-    throw new Error('Project not found.');
-  }
+    if (!sourceProject || !targetProject) {
+      throw new Error('Project not found.');
+    }
 
-  if (
-    sourceProject.id === targetProject.id ||
-    sourceProject.isPinned !== targetProject.isPinned ||
-    sourceProject.isArchived !== targetProject.isArchived
-  ) {
-    return state;
-  }
+    if (
+      sourceProject.id === targetProject.id ||
+      sourceProject.isPinned !== targetProject.isPinned ||
+      sourceProject.isArchived !== targetProject.isArchived
+    ) {
+      return state;
+    }
 
-  const sourceIndex = state.projects.findIndex((project) => project.id === projectId);
-  const targetIndex = state.projects.findIndex((project) => project.id === targetProjectId);
+    const sourceIndex = state.projects.findIndex((project) => project.id === projectId);
+    const targetIndex = state.projects.findIndex((project) => project.id === targetProjectId);
 
-  if (sourceIndex === -1 || targetIndex === -1) {
-    throw new Error('Project not found.');
-  }
+    if (sourceIndex === -1 || targetIndex === -1) {
+      throw new Error('Project not found.');
+    }
 
-  const projects = [...state.projects];
-  const [movedProject] = projects.splice(sourceIndex, 1);
-  const adjustedTargetIndex = projects.findIndex((project) => project.id === targetProjectId);
+    const projects = [...state.projects];
+    const [movedProject] = projects.splice(sourceIndex, 1);
+    const adjustedTargetIndex = projects.findIndex((project) => project.id === targetProjectId);
 
-  if (adjustedTargetIndex === -1) {
-    throw new Error('Project not found.');
-  }
+    if (adjustedTargetIndex === -1) {
+      throw new Error('Project not found.');
+    }
 
-  const insertionIndex =
-    placement === 'after' ? adjustedTargetIndex + 1 : adjustedTargetIndex;
+    const insertionIndex =
+      placement === 'after' ? adjustedTargetIndex + 1 : adjustedTargetIndex;
 
-  projects.splice(insertionIndex, 0, {
-    ...movedProject,
-    updatedAt: nowIso(),
-  });
+    projects.splice(insertionIndex, 0, {
+      ...movedProject,
+      updatedAt: nowIso(),
+    });
 
-  return saveState({
-    ...state,
-    projects,
+    return {
+      ...state,
+      projects,
+    };
   });
 }
 
 export async function addTabsToProject(projectId, tabs) {
-  const state = await getState();
-  return saveState(
+  return updateState((state) =>
     updateProjectById(state, projectId, (project) => ({
       ...project,
       tabs: [...project.tabs, ...tabs],
@@ -408,8 +435,7 @@ export async function addTabsToProject(projectId, tabs) {
 }
 
 export async function removeSavedTab(projectId, tabId) {
-  const state = await getState();
-  return saveState(
+  return updateState((state) =>
     updateProjectById(state, projectId, (project) => ({
       ...project,
       tabs: project.tabs.filter((tab) => tab.id !== tabId),
@@ -418,8 +444,7 @@ export async function removeSavedTab(projectId, tabId) {
 }
 
 export async function moveSavedTab(projectId, tabId, targetTabId, placement = 'before') {
-  const state = await getState();
-  return saveState(
+  return updateState((state) =>
     updateProjectById(state, projectId, (project) => {
       const currentIndex = project.tabs.findIndex((tab) => tab.id === tabId);
       const targetIndex = project.tabs.findIndex((tab) => tab.id === targetTabId);
@@ -453,8 +478,7 @@ export async function moveSavedTab(projectId, tabId, targetTabId, placement = 'b
 }
 
 export async function moveSavedTabToTop(projectId, tabId) {
-  const state = await getState();
-  return saveState(
+  return updateState((state) =>
     updateProjectById(state, projectId, (project) => {
       const currentIndex = project.tabs.findIndex((tab) => tab.id === tabId);
 
@@ -478,8 +502,7 @@ export async function moveSavedTabToTop(projectId, tabId) {
 }
 
 export async function linkSavedTabToBrowserTab(projectId, tabId, browserTab) {
-  const state = await getState();
-  return saveState(
+  return updateState((state) =>
     updateProjectById(state, projectId, (project) => {
       const currentIndex = project.tabs.findIndex((tab) => tab.id === tabId);
 
@@ -505,8 +528,7 @@ export async function linkSavedTabToBrowserTab(projectId, tabId, browserTab) {
 }
 
 export async function linkRestoredTabsToProject(projectId, restoredTabLinks) {
-  const state = await getState();
-  return saveState(
+  return updateState((state) =>
     updateProjectById(state, projectId, (project) => ({
       ...project,
       tabs: project.tabs.map((savedTab) => {
@@ -538,13 +560,6 @@ export async function importProjects(rawValue) {
     throw new Error('The imported file does not contain any projects.');
   }
 
-  const currentState = await getState();
-  const projects = [...currentState.projects];
-  const projectIds = new Set(projects.map((project) => project.id));
-  const projectIndexesById = new Map(projects.map((project, index) => [project.id, index]));
-  const projectIndexesByName = new Map(
-    projects.map((project, index) => [project.name.trim().toLowerCase(), index]),
-  );
   const summary = {
     addedProjects: 0,
     mergedProjects: 0,
@@ -554,58 +569,67 @@ export async function importProjects(rawValue) {
     addedNotes: 0,
     skippedNotes: 0,
   };
+  const state = await updateState((currentState) => {
+    const projects = [...currentState.projects];
+    const projectIds = new Set(projects.map((project) => project.id));
+    const projectIndexesById = new Map(projects.map((project, index) => [project.id, index]));
+    const projectIndexesByName = new Map(
+      projects.map((project, index) => [project.name.trim().toLowerCase(), index]),
+    );
 
-  for (const incomingProject of importedState.projects) {
-    const projectNameKey = incomingProject.name.trim().toLowerCase();
-    const existingIndex = projectIndexesById.has(incomingProject.id)
-      ? projectIndexesById.get(incomingProject.id)
-      : projectIndexesByName.get(projectNameKey);
+    for (const incomingProject of importedState.projects) {
+      const projectNameKey = incomingProject.name.trim().toLowerCase();
+      const existingIndex = projectIndexesById.has(incomingProject.id)
+        ? projectIndexesById.get(incomingProject.id)
+        : projectIndexesByName.get(projectNameKey);
 
-    if (typeof existingIndex === 'number') {
-      const merge = mergeProject(projects[existingIndex], incomingProject);
-      projects[existingIndex] = merge.project;
-      summary.addedTabs += merge.addedTabs;
-      summary.skippedTabs += merge.skippedTabs;
-      summary.addedNotes += merge.addedNotes;
-      summary.skippedNotes += merge.skippedNotes;
+      if (typeof existingIndex === 'number') {
+        const merge = mergeProject(projects[existingIndex], incomingProject);
+        projects[existingIndex] = merge.project;
+        summary.addedTabs += merge.addedTabs;
+        summary.skippedTabs += merge.skippedTabs;
+        summary.addedNotes += merge.addedNotes;
+        summary.skippedNotes += merge.skippedNotes;
 
-      if (merge.addedTabs || merge.addedNotes) {
-        summary.mergedProjects += 1;
-      } else {
-        summary.skippedProjects += 1;
+        if (merge.addedTabs || merge.addedNotes) {
+          summary.mergedProjects += 1;
+        } else {
+          summary.skippedProjects += 1;
+        }
+
+        continue;
       }
 
-      continue;
+      let project = incomingProject;
+
+      if (projectIds.has(project.id)) {
+        project = {
+          ...project,
+          id: createId(),
+        };
+      }
+
+      projects.push(project);
+      const nextIndex = projects.length - 1;
+      projectIds.add(project.id);
+      projectIndexesById.set(project.id, nextIndex);
+      projectIndexesByName.set(projectNameKey, nextIndex);
+      summary.addedProjects += 1;
+      summary.addedTabs += project.tabs.length;
+      summary.addedNotes += project.notes.length;
     }
 
-    let project = incomingProject;
+    const selectedProjectId =
+      currentState.selectedProjectId ||
+      importedState.selectedProjectId ||
+      projects[0]?.id ||
+      null;
 
-    if (projectIds.has(project.id)) {
-      project = {
-        ...project,
-        id: createId(),
-      };
-    }
-
-    projects.push(project);
-    const nextIndex = projects.length - 1;
-    projectIds.add(project.id);
-    projectIndexesById.set(project.id, nextIndex);
-    projectIndexesByName.set(projectNameKey, nextIndex);
-    summary.addedProjects += 1;
-    summary.addedTabs += project.tabs.length;
-    summary.addedNotes += project.notes.length;
-  }
-
-  const selectedProjectId =
-    currentState.selectedProjectId ||
-    importedState.selectedProjectId ||
-    projects[0]?.id ||
-    null;
-  const state = await saveState({
-    ...currentState,
-    selectedProjectId,
-    projects,
+    return {
+      ...currentState,
+      selectedProjectId,
+      projects,
+    };
   });
 
   return {

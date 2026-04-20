@@ -1,5 +1,4 @@
-import { STORAGE_KEY } from '../lib/constants.js';
-import { normalizeState, saveState } from '../lib/storage.js';
+import { updateState } from '../lib/storage.js';
 import { isSaveableUrl } from '../lib/chromeTabs.js';
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -40,126 +39,119 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   await unlinkClosedBrowserTab(tabId);
 });
 
-async function readState() {
-  const result = await chrome.storage.local.get(STORAGE_KEY);
-  return normalizeState(result[STORAGE_KEY]);
-}
-
 async function clearLiveTabLinks() {
-  const state = await readState();
-  let changed = false;
+  await updateState((state) => {
+    let changed = false;
 
-  const projects = state.projects.map((project) => ({
-    ...project,
-    tabs: project.tabs.map((savedTab) => {
-      if (savedTab.browserTabId === null && savedTab.browserWindowId === null) {
-        return savedTab;
-      }
+    const projects = state.projects.map((project) => ({
+      ...project,
+      tabs: project.tabs.map((savedTab) => {
+        if (savedTab.browserTabId === null && savedTab.browserWindowId === null) {
+          return savedTab;
+        }
 
-      changed = true;
-      return {
-        ...savedTab,
-        browserTabId: null,
-        browserWindowId: null,
-      };
-    }),
-  }));
+        changed = true;
+        return {
+          ...savedTab,
+          browserTabId: null,
+          browserWindowId: null,
+        };
+      }),
+    }));
 
-  if (changed) {
-    await saveState({ ...state, projects });
-  }
+    return changed ? { ...state, projects } : state;
+  });
 }
 
 async function unlinkClosedBrowserTab(tabId) {
-  const state = await readState();
-  let changed = false;
+  await updateState((state) => {
+    let changed = false;
 
-  const projects = state.projects.map((project) => ({
-    ...project,
-    tabs: project.tabs.map((savedTab) => {
-      if (savedTab.browserTabId !== tabId) {
-        return savedTab;
-      }
+    const projects = state.projects.map((project) => ({
+      ...project,
+      tabs: project.tabs.map((savedTab) => {
+        if (savedTab.browserTabId !== tabId) {
+          return savedTab;
+        }
 
-      changed = true;
-      return {
-        ...savedTab,
-        browserTabId: null,
-        browserWindowId: null,
-      };
-    }),
-  }));
+        changed = true;
+        return {
+          ...savedTab,
+          browserTabId: null,
+          browserWindowId: null,
+        };
+      }),
+    }));
 
-  if (changed) {
-    await saveState({ ...state, projects });
-  }
+    return changed ? { ...state, projects } : state;
+  });
 }
 
 async function syncSavedTabFromBrowserTab(tabId, browserTab) {
-  const state = await readState();
-  let changed = false;
   const now = new Date().toISOString();
 
-  const projects = state.projects.map((project) => ({
-    ...project,
-    tabs: project.tabs.map((savedTab) => {
-      if (
-        savedTab.browserTabId !== tabId ||
-        savedTab.browserWindowId !== browserTab.windowId
-      ) {
-        return savedTab;
-      }
+  await updateState((state) => {
+    let changed = false;
 
-      changed = true;
-      return {
-        ...savedTab,
-        title: browserTab.title || browserTab.url || savedTab.title,
-        url: browserTab.url,
-        favIconUrl: browserTab.favIconUrl || '',
-        updatedAt: now,
-      };
-    }),
-  }));
+    const projects = state.projects.map((project) => ({
+      ...project,
+      tabs: project.tabs.map((savedTab) => {
+        if (
+          savedTab.browserTabId !== tabId ||
+          savedTab.browserWindowId !== browserTab.windowId
+        ) {
+          return savedTab;
+        }
 
-  if (changed) {
-    await saveState({ ...state, projects });
-  }
+        changed = true;
+        return {
+          ...savedTab,
+          title: browserTab.title || browserTab.url || savedTab.title,
+          url: browserTab.url,
+          favIconUrl: browserTab.favIconUrl || '',
+          updatedAt: now,
+        };
+      }),
+    }));
+
+    return changed ? { ...state, projects } : state;
+  });
 }
 
 async function moveLinkedSavedTabToTop(tabId, windowId) {
-  const state = await readState();
-  let changed = false;
   const now = new Date().toISOString();
 
-  const projects = state.projects.map((project) => {
-    const currentIndex = project.tabs.findIndex(
-      (savedTab) =>
-        savedTab.browserTabId === tabId &&
-        savedTab.browserWindowId === windowId,
-    );
+  await updateState((state) => {
+    let changed = false;
 
-    if (currentIndex <= 0) {
-      return project;
-    }
+    const projects = state.projects.map((project) => {
+      const currentIndex = project.tabs.findIndex(
+        (savedTab) =>
+          savedTab.browserTabId === tabId &&
+          savedTab.browserWindowId === windowId,
+      );
 
-    changed = true;
-    const tabs = [...project.tabs];
-    const [moved] = tabs.splice(currentIndex, 1);
+      if (currentIndex <= 0) {
+        return project;
+      }
 
-    return {
-      ...project,
-      updatedAt: now,
-      tabs: [
-        {
-          ...moved,
-          updatedAt: now,
-        },
-        ...tabs,
-      ],
-    };
+      changed = true;
+      const tabs = [...project.tabs];
+      const [moved] = tabs.splice(currentIndex, 1);
+
+      return {
+        ...project,
+        updatedAt: now,
+        tabs: [
+          {
+            ...moved,
+            updatedAt: now,
+          },
+          ...tabs,
+        ],
+      };
+    });
+
+    return changed ? { ...state, projects } : state;
   });
-
-  if (changed) {
-    await saveState({ ...state, projects });
-  }
 }
