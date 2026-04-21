@@ -32,7 +32,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 });
 
 chrome.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
-  await moveLinkedSavedTabToTop(tabId, windowId);
+  await syncLinkedSavedTabSelection(tabId, windowId);
 });
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
@@ -118,38 +118,35 @@ async function syncSavedTabFromBrowserTab(tabId, browserTab) {
   });
 }
 
-async function moveLinkedSavedTabToTop(tabId, windowId) {
+async function syncLinkedSavedTabSelection(tabId, windowId) {
   const now = new Date().toISOString();
 
   await updateState((state) => {
     let changed = false;
 
     const projects = state.projects.map((project) => {
-      const currentIndex = project.tabs.findIndex(
-        (savedTab) =>
-          savedTab.browserTabId === tabId &&
-          savedTab.browserWindowId === windowId,
-      );
+      let projectChanged = false;
 
-      if (currentIndex <= 0) {
-        return project;
-      }
+      const tabs = project.tabs.map((savedTab) => {
+        if (savedTab.browserTabId !== tabId || savedTab.browserWindowId !== windowId) {
+          return savedTab;
+        }
 
-      changed = true;
-      const tabs = [...project.tabs];
-      const [moved] = tabs.splice(currentIndex, 1);
+        changed = true;
+        projectChanged = true;
+        return {
+          ...savedTab,
+          updatedAt: now,
+        };
+      });
 
-      return {
-        ...project,
-        updatedAt: now,
-        tabs: [
-          {
-            ...moved,
+      return projectChanged
+        ? {
+            ...project,
             updatedAt: now,
-          },
-          ...tabs,
-        ],
-      };
+            tabs,
+          }
+        : project;
     });
 
     return changed ? { ...state, projects } : state;

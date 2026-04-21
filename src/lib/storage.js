@@ -510,14 +510,16 @@ export async function linkSavedTabToBrowserTab(projectId, tabId, browserTab) {
         return project;
       }
 
-      const tabs = [...project.tabs];
-      const [linkedTab] = tabs.splice(currentIndex, 1);
-      tabs.unshift({
-        ...linkedTab,
-        browserTabId: typeof browserTab.id === 'number' ? browserTab.id : null,
-        browserWindowId: typeof browserTab.windowId === 'number' ? browserTab.windowId : null,
-        updatedAt: nowIso(),
-      });
+      const tabs = project.tabs.map((tab) =>
+        tab.id === tabId
+          ? {
+              ...tab,
+              browserTabId: typeof browserTab.id === 'number' ? browserTab.id : null,
+              browserWindowId: typeof browserTab.windowId === 'number' ? browserTab.windowId : null,
+              updatedAt: nowIso(),
+            }
+          : tab,
+      );
 
       return {
         ...project,
