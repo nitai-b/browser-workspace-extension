@@ -86,7 +86,7 @@ The side panel includes global search for project names, notes, saved tab titles
 
 - The extension uses the side panel as the primary UI. The toolbar action opens that panel.
 - The source of truth is extension-managed project data in `chrome.storage.local`, not browser tab groups.
-- Saved tabs are appended to projects as-is. Duplicate URLs are allowed.
+- Saved tabs are added to the top of projects as-is. Duplicate URLs are allowed.
 - Saved tab order stays in the order you saved or manually arranged it.
 - Live browser-tab syncing is session scoped. If the extension or browser restarts, saved tabs remain stored, but the live tab association is cleared to avoid syncing against stale browser tab IDs.
 - Restricted internal browser pages cannot be saved and are skipped safely.

@@ -240,7 +240,7 @@ export async function createProject(name = '') {
     return {
       ...state,
       selectedProjectId: project.id,
-      projects: [...state.projects, project],
+      projects: [project, ...state.projects],
     };
   });
 }
@@ -429,7 +429,7 @@ export async function addTabsToProject(projectId, tabs) {
   return updateState((state) =>
     updateProjectById(state, projectId, (project) => ({
       ...project,
-      tabs: [...project.tabs, ...tabs],
+      tabs: [...tabs, ...project.tabs],
     })),
   );
 }
